@@ -1,0 +1,301 @@
+import { useEffect, useRef, useState } from “react”;
+
+const COLS = 8, BROWS = 5, BGAP = 4;
+const BCOLORS = [”#ff3344”,”#ff8800”,”#ffee00”,”#00cc44”,”#2288ff”];
+
+export default function Breakout() {
+const canvasRef = useRef(null);
+const stateRef  = useRef(null);
+const rafRef    = useRef(null);
+const keysRef   = useRef({});
+const goLRef    = useRef(false);
+const goRRef    = useRef(false);
+
+const [phase,  setPhase]  = useState(“menu”); // menu | waiting | playing | over
+const [score,  setScore]  = useState(0);
+const [level,  setLevel]  = useState(1);
+const [lives,  setLives]  = useState(3);
+const [diff,   setDiff]   = useState(“medium”);
+const [msg,    setMsg]    = useState(””);
+
+function bspeed(lvl) {
+const base = { easy:3, medium:4.5, hard:6.5 }[diff] || 4.5;
+return base + (lvl - 1) * 0.5;
+}
+
+function makeBricks(W, H) {
+const BW = Math.floor((W - BGAP*(COLS+1)) / COLS);
+const BH = Math.round(H * 0.05);
+const BTOP = Math.round(H * 0.08);
+const arr = [];
+for (let r = 0; r < BROWS; r++)
+for (let c = 0; c < COLS; c++)
+arr.push({ x: BGAP+c*(BW+BGAP), y: BTOP+r*(BH+BGAP), row:r, alive:true });
+return arr;
+}
+
+function initState(W, H, lvl, sc, li) {
+const PW = Math.round(W * 0.22);
+const PH = 12;
+const PY = H - 50;
+const BR = 8;
+const BW = Math.floor((W - BGAP*(COLS+1)) / COLS);
+const BH = Math.round(H * 0.05);
+const s  = bspeed(lvl);
+const bricks = makeBricks(W, H);
+const paddle = { x: W/2 - PW/2, y: PY, w: PW, h: PH };
+const ball   = { x: W/2, y: PY - BR - 2, vx: s*(Math.random()>0.5?1:-1), vy:-s };
+return { W, H, PW, PH, PY, BR, BW, BH, BTOP: Math.round(H*0.08), bricks, paddle, ball, lvl, sc, li };
+}
+
+function startGame(W, H) {
+const s = initState(W, H, 1, 0, 3);
+stateRef.current = s;
+setPhase(“waiting”);
+setScore(0); setLevel(1); setLives(3);
+setMsg(“TAP ▶ OR SPACE TO LAUNCH”);
+}
+
+function launch() {
+if (stateRef.current) setPhase(“playing”);
+}
+
+// Main loop
+useEffect(() => {
+const canvas = canvasRef.current;
+if (!canvas) return;
+const ctx = canvas.getContext(“2d”);
+const W = canvas.width, H = canvas.height;
+
+```
+function loop() {
+  const st = stateRef.current;
+  const currentPhase = phaseRef.current;
+
+  // Draw background always
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, W, H);
+
+  if (!st) { rafRef.current = requestAnimationFrame(loop); return; }
+
+  const { BW, BH, BR } = st;
+
+  // Update
+  if (currentPhase === "playing") {
+    if (keysRef.current["ArrowLeft"]  || keysRef.current["KeyA"] || goLRef.current) st.paddle.x -= 6;
+    if (keysRef.current["ArrowRight"] || keysRef.current["KeyD"] || goRRef.current) st.paddle.x += 6;
+    st.paddle.x = Math.max(0, Math.min(W - st.paddle.w, st.paddle.x));
+
+    st.ball.x += st.ball.vx;
+    st.ball.y += st.ball.vy;
+
+    if (st.ball.x - BR < 0)  { st.ball.x = BR;    st.ball.vx =  Math.abs(st.ball.vx); }
+    if (st.ball.x + BR > W)  { st.ball.x = W-BR;  st.ball.vx = -Math.abs(st.ball.vx); }
+    if (st.ball.y - BR < 0)  { st.ball.y = BR;    st.ball.vy =  Math.abs(st.ball.vy); }
+
+    if (st.ball.vy > 0 &&
+        st.ball.y + BR >= st.paddle.y &&
+        st.ball.y - BR <= st.paddle.y + st.paddle.h &&
+        st.ball.x      >= st.paddle.x &&
+        st.ball.x      <= st.paddle.x + st.paddle.w) {
+      const rel = (st.ball.x - (st.paddle.x + st.paddle.w/2)) / (st.paddle.w/2);
+      st.ball.vx = rel * bspeed(st.lvl) * 1.3;
+      st.ball.vy = -Math.abs(st.ball.vy);
+      st.ball.y  = st.paddle.y - BR;
+    }
+
+    if (st.ball.y - BR > H) {
+      st.li--;
+      setLives(st.li);
+      if (st.li <= 0) {
+        setPhase("over");
+        setMsg("GAME OVER — PRESS SPACE FOR MENU");
+      } else {
+        const s = bspeed(st.lvl);
+        st.ball = { x: W/2, y: st.PY-BR-2, vx: s*(Math.random()>0.5?1:-1), vy:-s };
+        setPhase("waiting");
+        setMsg("TAP ▶ OR SPACE TO LAUNCH");
+      }
+    }
+
+    let left = 0;
+    for (const b of st.bricks) {
+      if (!b.alive) continue; left++;
+      if (st.ball.x+BR > b.x && st.ball.x-BR < b.x+BW &&
+          st.ball.y+BR > b.y && st.ball.y-BR < b.y+BH) {
+        b.alive = false; left--;
+        st.sc += (BROWS - b.row) * 10 * st.lvl;
+        setScore(st.sc);
+        const cx=b.x+BW/2, cy=b.y+BH/2;
+        if (Math.abs(st.ball.x-cx)/BW > Math.abs(st.ball.y-cy)/BH) st.ball.vx *= -1;
+        else st.ball.vy *= -1;
+        break;
+      }
+    }
+    if (left === 0) {
+      st.lvl++;
+      setLevel(st.lvl);
+      st.bricks = makeBricks(W, H);
+      const s = bspeed(st.lvl);
+      st.ball = { x: W/2, y: st.PY-BR-2, vx: s*(Math.random()>0.5?1:-1), vy:-s };
+      setPhase("waiting");
+      setMsg(`LEVEL ${st.lvl} — TAP ▶ OR SPACE`);
+    }
+  }
+
+  // Draw bricks
+  for (const b of st.bricks) {
+    if (!b.alive) continue;
+    ctx.fillStyle = BCOLORS[b.row % BCOLORS.length];
+    ctx.fillRect(b.x, b.y, BW, BH);
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.fillRect(b.x+2, b.y+2, BW-4, 4);
+  }
+
+  // Draw paddle
+  ctx.fillStyle = "#00ff88";
+  ctx.fillRect(st.paddle.x, st.paddle.y, st.paddle.w, st.paddle.h);
+
+  // Draw ball
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(st.ball.x, st.ball.y, BR, 0, Math.PI*2);
+  ctx.fill();
+
+  rafRef.current = requestAnimationFrame(loop);
+}
+
+rafRef.current = requestAnimationFrame(loop);
+return () => cancelAnimationFrame(rafRef.current);
+```
+
+}, [diff]);
+
+// Sync phase to a ref so the loop can read it without re-subscribing
+const phaseRef = useRef(phase);
+useEffect(() => {
+phaseRef.current = phase;
+}, [phase]);
+
+// Keyboard
+useEffect(() => {
+const down = e => {
+keysRef.current[e.code] = true;
+if (e.code === “Space”) {
+e.preventDefault();
+if (phaseRef.current === “waiting”) setPhase(“playing”);
+if (phaseRef.current === “over”)    setPhase(“menu”);
+}
+};
+const up = e => { keysRef.current[e.code] = false; };
+window.addEventListener(“keydown”, down);
+window.addEventListener(“keyup”,   up);
+return () => { window.removeEventListener(“keydown”, down); window.removeEventListener(“keyup”, up); };
+}, []);
+
+const W = Math.min(480, typeof window !== “undefined” ? window.innerWidth : 400);
+const H = 360;
+
+return (
+<div style={{ background:”#000”, minHeight:“100vh”, display:“flex”, flexDirection:“column”, alignItems:“center”, justifyContent:“center”, fontFamily:“monospace”, color:”#0f0”, userSelect:“none” }}>
+
+```
+  {/* MENU */}
+  {phase === "menu" && (
+    <div style={{ position:"absolute", inset:0, background:"#000", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:14, zIndex:10 }}>
+      <div style={{ fontSize:44, letterSpacing:8, color:"#00ff88", textShadow:"0 0 20px #00ff88" }}>BREAKOUT</div>
+      <div style={{ fontSize:12, color:"#444", letterSpacing:2 }}>CLASSIC ARCADE</div>
+      <div style={{ fontSize:12, color:"#666", marginTop:8 }}>DIFFICULTY</div>
+      <div style={{ display:"flex", gap:8 }}>
+        {["easy","medium","hard"].map(d => (
+          <button key={d} onClick={() => setDiff(d)} style={{ fontFamily:"monospace", fontSize:12, padding:"8px 14px", background: diff===d ? "rgba(0,255,136,.1)" : "transparent", border: diff===d ? "1px solid #00ff88" : "1px solid #333", color: diff===d ? "#00ff88" : "#555", cursor:"pointer", borderRadius:4, letterSpacing:1 }}>
+            {d.toUpperCase()}
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={() => {
+          const canvas = canvasRef.current;
+          if (canvas) startGame(canvas.width, canvas.height);
+          setPhase("waiting");
+        }}
+        style={{ fontFamily:"monospace", fontSize:16, letterSpacing:3, padding:"13px 36px", background:"#00ff88", color:"#000", border:"none", borderRadius:4, cursor:"pointer", marginTop:8 }}>
+        ▶ PLAY
+      </button>
+      <div style={{ fontSize:10, color:"#333", marginTop:4 }}>Mouse / arrows / buttons to move</div>
+    </div>
+  )}
+
+  {/* HUD */}
+  {phase !== "menu" && (
+    <div style={{ display:"flex", justifyContent:"space-between", width:W, padding:"4px 8px", fontSize:13 }}>
+      <span>SCORE {score}</span>
+      <span>LEVEL {level}</span>
+      <span>{"♥".repeat(lives)}</span>
+    </div>
+  )}
+
+  {/* Canvas */}
+  <canvas
+    ref={canvasRef}
+    width={W}
+    height={H}
+    style={{ border:"1px solid #0f0", display: phase === "menu" ? "none" : "block" }}
+    onClick={() => { if (phase === "waiting") setPhase("playing"); }}
+    onMouseMove={e => {
+      const canvas = canvasRef.current;
+      if (!canvas || !stateRef.current || phase === "menu") return;
+      const rect = canvas.getBoundingClientRect();
+      stateRef.current.paddle.x = (e.clientX - rect.left) - stateRef.current.paddle.w / 2;
+    }}
+    onTouchStart={e => {
+      if (phase === "waiting") setPhase("playing");
+      const canvas = canvasRef.current;
+      if (!canvas || !stateRef.current) return;
+      const rect = canvas.getBoundingClientRect();
+      stateRef.current.paddle.x = e.touches[0].clientX - rect.left - stateRef.current.paddle.w / 2;
+    }}
+    onTouchMove={e => {
+      e.preventDefault();
+      const canvas = canvasRef.current;
+      if (!canvas || !stateRef.current) return;
+      const rect = canvas.getBoundingClientRect();
+      stateRef.current.paddle.x = e.touches[0].clientX - rect.left - stateRef.current.paddle.w / 2;
+    }}
+  />
+
+  {/* Status message */}
+  {phase !== "menu" && msg && (
+    <div style={{ fontSize:11, color:"#0f0", letterSpacing:2, marginTop:8, textAlign:"center" }}>{msg}</div>
+  )}
+
+  {/* Arrow buttons */}
+  {phase !== "menu" && (
+    <div style={{ display:"flex", gap:16, marginTop:12 }}>
+      {[["◀", goLRef], ["▶", goRRef]].map(([label, ref], i) => (
+        <button key={i}
+          style={{ width:110, height:54, fontSize:22, background:"#111", border:"2px solid #0f0", color:"#0f0", borderRadius:8, cursor:"pointer", touchAction:"none" }}
+          onMouseDown={() => { ref.current=true;  if(phase==="waiting") setPhase("playing"); }}
+          onMouseUp={() => ref.current=false}
+          onMouseLeave={() => ref.current=false}
+          onTouchStart={e => { e.preventDefault(); ref.current=true;  if(phase==="waiting") setPhase("playing"); }}
+          onTouchEnd={() => ref.current=false}
+          onTouchCancel={() => ref.current=false}
+        >{label}</button>
+      ))}
+    </div>
+  )}
+
+  {/* Game over overlay */}
+  {phase === "over" && (
+    <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16, zIndex:10 }}>
+      <div style={{ fontSize:36, color:"#f33", letterSpacing:4 }}>GAME OVER</div>
+      <div style={{ fontSize:16 }}>SCORE: {score}</div>
+      <button onClick={() => setPhase("menu")} style={{ fontFamily:"monospace", fontSize:14, padding:"12px 28px", background:"#0f0", color:"#000", border:"none", borderRadius:4, cursor:"pointer", letterSpacing:2 }}>MENU</button>
+    </div>
+  )}
+</div>
+```
+
+);
+}
