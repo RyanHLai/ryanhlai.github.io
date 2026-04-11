@@ -39,7 +39,7 @@
       background-color: black;
       width: 90%;
       max-width: 400px;
-      height: auto;
+      aspect-ratio: 1;
     }
 
     .controls {
@@ -157,7 +157,7 @@
 </head>
 <body>
   <div class="container">
-    <!-- Header -->
+    <p style="margin-bottom:10px"><a href="/" style="color:#fff;text-decoration:none;font-size:14px">&larr; Home</a></p>
     <h1>Snake Game</h1>
 
     <!-- Settings -->
@@ -172,10 +172,10 @@
     <!-- Mobile Controls -->
     <div class="controls">
       <div class="dpad">
-        <button class="up" ontouchstart="setDirection('ArrowUp')" onclick="setDirection('ArrowUp')">⬆️</button>
-        <button class="down" ontouchstart="setDirection('ArrowDown')" onclick="setDirection('ArrowDown')">⬇️</button>
-        <button class="left" ontouchstart="setDirection('ArrowLeft')" onclick="setDirection('ArrowLeft')">⬅️</button>
-        <button class="right" ontouchstart="setDirection('ArrowRight')" onclick="setDirection('ArrowRight')">➡️</button>
+        <button class="up" data-dir="ArrowUp">⬆️</button>
+        <button class="down" data-dir="ArrowDown">⬇️</button>
+        <button class="left" data-dir="ArrowLeft">⬅️</button>
+        <button class="right" data-dir="ArrowRight">➡️</button>
       </div>
     </div>
   </div>
@@ -316,6 +316,16 @@
       } else {
         themeToggle.textContent = 'Switch to Light Mode';
       }
+    });
+
+    // D-pad button controls
+    document.querySelectorAll('.dpad button').forEach(function(btn) {
+      var dir = btn.dataset.dir;
+      btn.addEventListener('click', function() { setDirection(dir); });
+      btn.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        setDirection(dir);
+      });
     });
 
     // Start the game

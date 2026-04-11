@@ -17,6 +17,7 @@
 </style>
 </head>
 <body>
+<p style="margin:0 0 10px 20px"><a href="/" style="color:#333;text-decoration:none;font-size:14px">&larr; Home</a></p>
 <div id="boardWrap">
   <canvas id="board" width="640" height="640"></canvas>
 </div>
@@ -611,11 +612,13 @@ document.getElementById('undoBtn').addEventListener('click', ()=>{
     if(tx === 6){
       // king moved e->g so rook f->h restore
       G.board[row][4] = {type:'k', color:last.piece.color};
+      G.board[row][5] = null;
       G.board[row][6] = null;
       G.board[row][7] = {type:'r', color:last.piece.color};
     } else if(tx === 2){
       G.board[row][4] = {type:'k', color:last.piece.color};
       G.board[row][2] = null;
+      G.board[row][3] = null;
       G.board[row][0] = {type:'r', color:last.piece.color};
     }
   }

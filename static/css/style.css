@@ -1,104 +1,109 @@
 /* General Reset */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #fff;
-            color: #1d1d1f;
-            line-height: 1.6;
-            padding: 20px;
-        }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #fff;
+  color: #1d1d1f;
+  line-height: 1.6;
+  padding: 20px;
+}
 
-        h1, h2 {
-            font-weight: 600;
-            color: #1d1d1f;
-            margin-bottom: 20px;
-        }
+h1, h2 {
+  font-weight: 600;
+  color: #1d1d1f;
+  margin-bottom: 20px;
+}
 
-        p {
-            font-size: 18px;
-            margin-bottom: 20px;
-            color: #6e6e73;
-        }
+h2 {
+  margin-top: 32px;
+}
 
-        a {
-            color: #0071e3;
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
+p {
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #6e6e73;
+}
 
-        a:hover {
-            color: #005bb5;
-        }
+a {
+  color: #0071e3;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
 
-        img {
-            margin: 20px 0;
-            max-width: 100%;
-            height: auto;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
+a:hover {
+  color: #005bb5;
+}
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
 
-        button {
-            background-color: #0071e3;
-            color: #fff;
-            border: none;
-            padding: 12px 24px;
-            font-size: 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.3s ease;
-            margin-right: 10px;
-        }
+figure {
+  margin: 20px 0;
+}
 
-        button:hover {
-            background-color: #005bb5;
-            transform: scale(1.05);
-        }
+figcaption {
+  font-size: 14px;
+  color: #6e6e73;
+  font-style: italic;
+  margin-top: 8px;
+}
 
-        button#secondButton {
-            background-color: #a9a9af;
-            color: #fff;
-        }
+.image-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
 
-        button#secondButton:hover {
-            background-color: #8c8c92;
-        }
+.image-row figure {
+  flex: 1;
+  min-width: 200px;
+  max-width: 300px;
+  margin: 0;
+}
 
-        ul {
-            list-style: none;
-            padding: 0;
-        }
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+}
 
-        ul li {
-            margin-bottom: 10px;
-        }
+ul {
+  list-style: none;
+  padding: 0;
+}
 
-        ul li a {
-            font-size: 18px;
-            font-weight: 500;
-        }
+ul li {
+  margin-bottom: 10px;
+}
 
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 28px;
-            }
+ul li a {
+  font-size: 18px;
+  font-weight: 500;
+}
 
-            p {
-                font-size: 16px;
-            }
+@media (max-width: 768px) {
+  h1 {
+    font-size: 28px;
+  }
 
-            button {
-                width: 100%;
-                margin-bottom: 10px;
-            }
-        }
+  p {
+    font-size: 16px;
+  }
+
+  .image-row {
+    flex-direction: column;
+  }
+
+  .image-row figure {
+    max-width: 100%;
+  }
+}

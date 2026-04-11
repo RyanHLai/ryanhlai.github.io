@@ -1,3 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Breakout</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      color: #0f0;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      user-select: none;
+    }
+    .nav { margin-bottom: 16px; }
+    .nav a { color: #0f0; text-decoration: none; font-size: 14px; letter-spacing: 1px; }
+    .nav a:hover { text-decoration: underline; }
+    h1 { font-size: 36px; letter-spacing: 6px; color: #00ff88; text-shadow: 0 0 16px #00ff88; margin-bottom: 12px; }
+    #hud { display: flex; justify-content: space-between; width: 480px; max-width: 95vw; padding: 4px 8px; font-size: 14px; margin-bottom: 4px; }
+    canvas { border: 1px solid #0f0; display: block; }
+    #message { font-size: 12px; color: #0f0; letter-spacing: 2px; margin-top: 8px; text-align: center; min-height: 20px; }
+    .controls { display: flex; gap: 16px; margin-top: 12px; }
+    .controls button {
+      width: 110px; height: 54px; font-size: 22px;
+      background: #111; border: 2px solid #0f0; color: #0f0;
+      border-radius: 8px; cursor: pointer; touch-action: none;
+      font-family: monospace;
+    }
+    .controls button:active { background: #1a3a1a; }
+    #menuOverlay, #gameOverOverlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 14px; z-index: 10;
+    }
+    .overlay-title { font-size: 44px; letter-spacing: 8px; color: #00ff88; text-shadow: 0 0 20px #00ff88; }
+    .overlay-sub { font-size: 12px; color: #444; letter-spacing: 2px; }
+    .diff-group { display: flex; gap: 8px; }
+    .diff-btn {
+      font-family: monospace; font-size: 12px; padding: 8px 14px;
+      background: transparent; border: 1px solid #333; color: #555;
+      cursor: pointer; border-radius: 4px; letter-spacing: 1px;
+    }
+    .diff-btn.active { background: rgba(0,255,136,0.1); border-color: #00ff88; color: #00ff88; }
+    .play-btn {
+      font-family: monospace; font-size: 16px; letter-spacing: 3px;
+      padding: 13px 36px; background: #00ff88; color: #000;
+      border: none; border-radius: 4px; cursor: pointer; margin-top: 8px;
+    }
+    .play-btn:hover { background: #33ffaa; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="nav"><a href="/">&#8592; Home</a></div>
+  <h1>BREAKOUT</h1>
+  <div id="hud" class="hidden">
+    <span id="scoreDisplay">SCORE 0</span>
+    <span id="levelDisplay">LEVEL 1</span>
+    <span id="livesDisplay">&#9829;&#9829;&#9829;</span>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+  <div id="message"></div>
+  <div class="controls hidden" id="controls">
+    <button id="btnLeft">&#9664;</button>
+    <button id="btnRight">&#9654;</button>
+  </div>
+
+  <div id="menuOverlay">
+    <div class="overlay-title">BREAKOUT</div>
+    <div class="overlay-sub">CLASSIC ARCADE</div>
+    <div style="font-size:12px;color:#666;margin-top:8px;">DIFFICULTY</div>
+    <div class="diff-group">
+      <button class="diff-btn" data-diff="easy">EASY</button>
+      <button class="diff-btn active" data-diff="medium">MEDIUM</button>
+      <button class="diff-btn" data-diff="hard">HARD</button>
+    </div>
+    <button class="play-btn" id="playBtn">&#9654; PLAY</button>
+    <div style="font-size:10px;color:#333;margin-top:4px;">Mouse / arrows / buttons to move</div>
+  </div>
+
+  <div id="gameOverOverlay" class="hidden">
+    <div style="font-size:36px;color:#f33;letter-spacing:4px;">GAME OVER</div>
+    <div style="font-size:16px;" id="finalScore">SCORE: 0</div>
+    <button class="play-btn" id="menuBtn">MENU</button>
+  </div>
+
+  <script>
+    const COLS = 8, BROWS = 5, BGAP = 4;
+    const BCOLORS = ["#ff3344", "#ff8800", "#ffee00", "#00cc44", "#2288ff"];
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const W = Math.min(480, window.innerWidth - 20);
+    const H = 360;
+    canvas.width = W;
+    canvas.height = H;
+
+    let diff = "medium";
+    let phase = "menu";
+    let score = 0, level = 1, lives = 3;
+    let paddle, ball, bricks, raf;
+    let goLeft = false, goRight = false;
+    const keys = {};
+
+    function bspeed(lvl) {
+      const base = { easy: 3, medium: 4.5, hard: 6.5 }[diff] || 4.5;
+      return base + (lvl - 1) * 0.5;
+    }
+
+    const BW = Math.floor((W - BGAP * (COLS + 1)) / COLS);
+    const BH = Math.round(H * 0.05);
+    const BTOP = Math.round(H * 0.08);
+    const PW = Math.round(W * 0.22);
+    const PH = 12;
+    const PY = H - 50;
+    const BR = 8;
+
+    function makeBricks() {
+      const arr = [];
+      for (let r = 0; r < BROWS; r++)
+        for (let c = 0; c < COLS; c++)
+          arr.push({ x: BGAP + c * (BW + BGAP), y: BTOP + r * (BH + BGAP), row: r, alive: true });
+      return arr;
+    }
+
+    function resetBall() {
+      const s = bspeed(level);
+      ball = { x: W / 2, y: PY - BR - 2, vx: s * (Math.random() > 0.5 ? 1 : -1), vy: -s };
+    }
+
+    function startGame() {
+      score = 0; level = 1; lives = 3;
+      paddle = { x: W / 2 - PW / 2 };
+      bricks = makeBricks();
+      resetBall();
+      updateHUD();
+      setPhase("waiting");
+      setMessage("TAP OR PRESS SPACE TO LAUNCH");
+    }
+
+    function setPhase(p) {
+      phase = p;
+      document.getElementById("menuOverlay").classList.toggle("hidden", p !== "menu");
+      document.getElementById("gameOverOverlay").classList.toggle("hidden", p !== "over");
+      document.getElementById("hud").classList.toggle("hidden", p === "menu");
+      document.getElementById("controls").classList.toggle("hidden", p === "menu");
+      if (p === "over") document.getElementById("finalScore").textContent = "SCORE: " + score;
+    }
+
+    function setMessage(msg) { document.getElementById("message").textContent = msg; }
+
+    function updateHUD() {
+      document.getElementById("scoreDisplay").textContent = "SCORE " + score;
+      document.getElementById("levelDisplay").textContent = "LEVEL " + level;
+      document.getElementById("livesDisplay").textContent = "\u2665".repeat(lives);
+    }
+
+    function loop() {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, W, H);
+
+      if (phase === "playing") {
+        if (keys["ArrowLeft"] || keys["KeyA"] || goLeft) paddle.x -= 6;
+        if (keys["ArrowRight"] || keys["KeyD"] || goRight) paddle.x += 6;
+        paddle.x = Math.max(0, Math.min(W - PW, paddle.x));
+
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        if (ball.x - BR < 0) { ball.x = BR; ball.vx = Math.abs(ball.vx); }
+        if (ball.x + BR > W) { ball.x = W - BR; ball.vx = -Math.abs(ball.vx); }
+        if (ball.y - BR < 0) { ball.y = BR; ball.vy = Math.abs(ball.vy); }
+
+        if (ball.vy > 0 && ball.y + BR >= PY && ball.y - BR <= PY + PH &&
+            ball.x >= paddle.x && ball.x <= paddle.x + PW) {
+          const rel = (ball.x - (paddle.x + PW / 2)) / (PW / 2);
+          ball.vx = rel * bspeed(level) * 1.3;
+          ball.vy = -Math.abs(ball.vy);
+          ball.y = PY - BR;
+        }
+
+        if (ball.y - BR > H) {
+          lives--;
+          updateHUD();
+          if (lives <= 0) {
+            setPhase("over");
+            setMessage("");
+          } else {
+            resetBall();
+            setPhase("waiting");
+            setMessage("TAP OR PRESS SPACE TO LAUNCH");
+          }
+        }
+
+        let left = 0;
+        for (const b of bricks) {
+          if (!b.alive) continue;
+          left++;
+          if (ball.x + BR > b.x && ball.x - BR < b.x + BW &&
+              ball.y + BR > b.y && ball.y - BR < b.y + BH) {
+            b.alive = false; left--;
+            score += (BROWS - b.row) * 10 * level;
+            updateHUD();
+            const cx = b.x + BW / 2, cy = b.y + BH / 2;
+            if (Math.abs(ball.x - cx) / BW > Math.abs(ball.y - cy) / BH) ball.vx *= -1;
+            else ball.vy *= -1;
+            break;
+          }
+        }
+        if (left === 0) {
+          level++;
+          bricks = makeBricks();
+          resetBall();
+          updateHUD();
+          setPhase("waiting");
+          setMessage("LEVEL " + level + " \u2014 TAP OR PRESS SPACE");
+        }
+      }
+
+      for (const b of bricks || []) {
+        if (!b.alive) continue;
+        ctx.fillStyle = BCOLORS[b.row % BCOLORS.length];
+        ctx.fillRect(b.x, b.y, BW, BH);
+        ctx.fillStyle = "rgba(255,255,255,0.2)";
+        ctx.fillRect(b.x + 2, b.y + 2, BW - 4, 4);
+      }
+
+      if (paddle) {
+        ctx.fillStyle = "#00ff88";
+        ctx.fillRect(paddle.x, PY, PW, PH);
+      }
+
+      if (ball) {
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, BR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      raf = requestAnimationFrame(loop);
+    }
+
+    document.querySelectorAll(".diff-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        document.querySelectorAll(".diff-btn").forEach(function(b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        diff = btn.dataset.diff;
+      });
+    });
+
+    document.getElementById("playBtn").addEventListener("click", startGame);
+    document.getElementById("menuBtn").addEventListener("click", function() { setPhase("menu"); });
+
+    window.addEventListener("keydown", function(e) {
+      keys[e.code] = true;
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (phase === "waiting") setPhase("playing");
+        if (phase === "over") setPhase("menu");
+      }
+    });
+    window.addEventListener("keyup", function(e) { keys[e.code] = false; });
+
+    canvas.addEventListener("mousemove", function(e) {
+      if (!paddle || phase === "menu") return;
+      var rect = canvas.getBoundingClientRect();
+      paddle.x = (e.clientX - rect.left) * (W / rect.width) - PW / 2;
+    });
+    canvas.addEventListener("click", function() { if (phase === "waiting") setPhase("playing"); });
+
+    canvas.addEventListener("touchstart", function(e) {
+      if (phase === "waiting") setPhase("playing");
+      if (!paddle) return;
+      var rect = canvas.getBoundingClientRect();
+      paddle.x = (e.touches[0].clientX - rect.left) * (W / rect.width) - PW / 2;
+    });
+    canvas.addEventListener("touchmove", function(e) {
+      e.preventDefault();
+      if (!paddle) return;
+      var rect = canvas.getBoundingClientRect();
+      paddle.x = (e.touches[0].clientX - rect.left) * (W / rect.width) - PW / 2;
+    }, { passive: false });
+
+    function bindDir(btn, dir) {
+      var on = function() { if (dir === "L") goLeft = true; else goRight = true; if (phase === "waiting") setPhase("playing"); };
+      var off = function() { if (dir === "L") goLeft = false; else goRight = false; };
+      btn.addEventListener("mousedown", on);
+      btn.addEventListener("mouseup", off);
+      btn.addEventListener("mouseleave", off);
+      btn.addEventListener("touchstart", function(e) { e.preventDefault(); on(); }, { passive: false });
+      btn.addEventListener("touchend", off);
+      btn.addEventListener("touchcancel", off);
+    }
+    bindDir(document.getElementById("btnLeft"), "L");
+    bindDir(document.getElementById("btnRight"), "R");
+
+    raf = requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
 import { useEffect, useRef, useState } from “react”;
 
 const COLS = 8, BROWS = 5, BGAP = 4;
