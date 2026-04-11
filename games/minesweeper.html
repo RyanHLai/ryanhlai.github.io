@@ -5,6 +5,285 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Minesweeper</title>
   <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      background: #2c3e50;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+
+    .nav { margin-bottom: 16px; }
+    .nav a { color: #ecf0f1; text-decoration: none; font-size: 14px; }
+    .nav a:hover { text-decoration: underline; }
+
+    h1 { margin-bottom: 16px; }
+
+    .toolbar {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 16px;
+      font-size: 18px;
+    }
+
+    .toolbar button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      background: #3498db;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .toolbar button:hover { background: #2980b9; }
+
+    .board {
+      display: grid;
+      grid-gap: 2px;
+    }
+
+    .cell {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: bold;
+      background: #bdc3c7;
+      border: 2px outset #ecf0f1;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .cell.revealed {
+      background: #95a5a6;
+      border: 1px solid #7f8c8d;
+      cursor: default;
+    }
+
+    .cell.mine { background: #e74c3c; }
+    .cell.flagged::after { content: "\01F6A9"; }
+
+    .cell[data-num="1"] { color: #2980b9; }
+    .cell[data-num="2"] { color: #27ae60; }
+    .cell[data-num="3"] { color: #e74c3c; }
+    .cell[data-num="4"] { color: #8e44ad; }
+    .cell[data-num="5"] { color: #c0392b; }
+    .cell[data-num="6"] { color: #16a085; }
+    .cell[data-num="7"] { color: #2c3e50; }
+    .cell[data-num="8"] { color: #7f8c8d; }
+
+    #status {
+      margin-top: 16px;
+      font-size: 18px;
+      min-height: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="nav"><a href="/">&larr; Home</a></div>
+  <h1>Minesweeper</h1>
+
+  <div class="toolbar">
+    <span id="mineCounter">&#x1F4A3; 15</span>
+    <button id="newGameBtn">New Game</button>
+    <span id="timerDisplay">&#x23F1; 0s</span>
+  </div>
+
+  <div class="board" id="board"></div>
+  <div id="status"></div>
+
+  <script>
+    var BOARD_SIZE = 10;
+    var MINE_COUNT = 15;
+
+    var grid = [];
+    var revealedCount = 0;
+    var flagCount = 0;
+    var gameActive = false;
+    var timerInterval = null;
+    var seconds = 0;
+
+    function init() {
+      grid = [];
+      revealedCount = 0;
+      flagCount = 0;
+      gameActive = true;
+      seconds = 0;
+      clearInterval(timerInterval);
+      document.getElementById("timerDisplay").textContent = "\u23F1 0s";
+      document.getElementById("mineCounter").textContent = "\uD83D\uDCA3 " + MINE_COUNT;
+      document.getElementById("status").textContent = "";
+
+      var boardEl = document.getElementById("board");
+      boardEl.innerHTML = "";
+      boardEl.style.gridTemplateColumns = "repeat(" + BOARD_SIZE + ", 32px)";
+
+      // Create grid data
+      for (var r = 0; r < BOARD_SIZE; r++) {
+        grid[r] = [];
+        for (var c = 0; c < BOARD_SIZE; c++) {
+          grid[r][c] = { mine: false, revealed: false, flagged: false, adjacentMines: 0 };
+        }
+      }
+
+      // Place mines randomly
+      var placed = 0;
+      while (placed < MINE_COUNT) {
+        var mr = Math.floor(Math.random() * BOARD_SIZE);
+        var mc = Math.floor(Math.random() * BOARD_SIZE);
+        if (!grid[mr][mc].mine) {
+          grid[mr][mc].mine = true;
+          placed++;
+        }
+      }
+
+      // Calculate adjacent mine counts
+      for (var r = 0; r < BOARD_SIZE; r++) {
+        for (var c = 0; c < BOARD_SIZE; c++) {
+          if (grid[r][c].mine) continue;
+          var count = 0;
+          forEachNeighbor(r, c, function (nr, nc) {
+            if (grid[nr][nc].mine) count++;
+          });
+          grid[r][c].adjacentMines = count;
+        }
+      }
+
+      // Create cell elements
+      for (var r = 0; r < BOARD_SIZE; r++) {
+        for (var c = 0; c < BOARD_SIZE; c++) {
+          var cell = document.createElement("div");
+          cell.className = "cell";
+          cell.dataset.r = r;
+          cell.dataset.c = c;
+          cell.addEventListener("click", handleCellClick);
+          cell.addEventListener("contextmenu", handleCellRightClick);
+          boardEl.appendChild(cell);
+        }
+      }
+
+      // Start timer
+      timerInterval = setInterval(function () {
+        if (gameActive) {
+          seconds++;
+          document.getElementById("timerDisplay").textContent = "\u23F1 " + seconds + "s";
+        }
+      }, 1000);
+    }
+
+    function forEachNeighbor(r, c, fn) {
+      for (var dr = -1; dr <= 1; dr++) {
+        for (var dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          var nr = r + dr;
+          var nc = c + dc;
+          if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE) {
+            fn(nr, nc);
+          }
+        }
+      }
+    }
+
+    function getCellEl(r, c) {
+      return document.querySelector('.cell[data-r="' + r + '"][data-c="' + c + '"]');
+    }
+
+    function handleCellClick(e) {
+      var r = parseInt(e.currentTarget.dataset.r);
+      var c = parseInt(e.currentTarget.dataset.c);
+      reveal(r, c);
+    }
+
+    function handleCellRightClick(e) {
+      e.preventDefault();
+      var r = parseInt(e.currentTarget.dataset.r);
+      var c = parseInt(e.currentTarget.dataset.c);
+      toggleFlag(r, c);
+    }
+
+    function reveal(r, c) {
+      if (!gameActive) return;
+      var data = grid[r][c];
+      if (data.revealed || data.flagged) return;
+
+      data.revealed = true;
+      revealedCount++;
+      var cell = getCellEl(r, c);
+      cell.classList.add("revealed");
+
+      if (data.mine) {
+        cell.classList.add("mine");
+        cell.textContent = "\uD83D\uDCA3";
+        endGame(false);
+        return;
+      }
+
+      if (data.adjacentMines > 0) {
+        cell.textContent = data.adjacentMines;
+        cell.dataset.num = data.adjacentMines;
+      } else {
+        // Flood-fill reveal empty neighbours
+        forEachNeighbor(r, c, function (nr, nc) { reveal(nr, nc); });
+      }
+
+      if (revealedCount === BOARD_SIZE * BOARD_SIZE - MINE_COUNT) {
+        endGame(true);
+      }
+    }
+
+    function toggleFlag(r, c) {
+      if (!gameActive) return;
+      var data = grid[r][c];
+      if (data.revealed) return;
+
+      data.flagged = !data.flagged;
+      var cell = getCellEl(r, c);
+      cell.classList.toggle("flagged", data.flagged);
+      flagCount += data.flagged ? 1 : -1;
+      document.getElementById("mineCounter").textContent = "\uD83D\uDCA3 " + (MINE_COUNT - flagCount);
+    }
+
+    function endGame(won) {
+      gameActive = false;
+      clearInterval(timerInterval);
+
+      // Reveal all mines
+      for (var r = 0; r < BOARD_SIZE; r++) {
+        for (var c = 0; c < BOARD_SIZE; c++) {
+          if (grid[r][c].mine && !grid[r][c].revealed) {
+            var cell = getCellEl(r, c);
+            cell.classList.add("revealed", "mine");
+            cell.textContent = "\uD83D\uDCA3";
+          }
+        }
+      }
+
+      document.getElementById("status").textContent = won
+        ? "\uD83C\uDF89 You won in " + seconds + "s!"
+        : "\uD83D\uDCA5 Game over!";
+    }
+
+    document.getElementById("newGameBtn").addEventListener("click", init);
+    init();
+  </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minesweeper</title>
+  <style>
     body {
       display: flex;
       flex-direction: column;
@@ -55,6 +334,7 @@
   </style>
 </head>
 <body>
+  <p style="margin:10px 0"><a href="/" style="color:#ecf0f1;text-decoration:none;font-size:14px">&larr; Home</a></p>
   <h1>Minesweeper</h1>
   <div class="board" id="board"></div>
 
