@@ -50,6 +50,10 @@ figure {
   margin: 20px 0;
 }
 
+figure img {
+  max-width: 400px;
+}
+
 figcaption {
   font-size: 14px;
   color: #6e6e73;
@@ -77,8 +81,7 @@ figcaption {
 }
 
 ul {
-  list-style: none;
-  padding: 0;
+  padding-left: 20px;
 }
 
 ul li {
