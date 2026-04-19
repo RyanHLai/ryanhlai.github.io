@@ -226,6 +226,7 @@
             <div class="stats">
                 <h3>Stats</h3>
                 <p>Score: <span id="score">0</span></p>
+                <p>High Score: <span id="highScore">0</span></p>
                 <p>Lines: <span id="lines">0</span></p>
                 <p>Level: <span id="level">1</span></p>
             </div>
@@ -270,6 +271,7 @@
         let score = 0;
         let lines = 0;
         let level = 1;
+        let highScore = parseInt(localStorage.getItem('tetrisHighScore')) || 0;
         let currentPiece = null;
         let nextPiece = null;
         let gameRunning = true;
@@ -334,13 +336,27 @@
             };
         }
 
-        function drawBlock(x, y, color, context = ctx) {
+        function drawBlock(x, y, color, context = ctx, blockSize = BLOCK_SIZE) {
             const colorArray = isDarkMode ? COLORS : LIGHT_COLORS;
+            const blockX = x * blockSize;
+            const blockY = y * blockSize;
+            const radius = blockSize * 0.15; // Corner radius proportional to block size
+
             context.fillStyle = colorArray[color];
-            context.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+
+            // Draw rounded rectangle (squircle) with fallback for older browsers
+            if (context.roundRect) {
+                context.beginPath();
+                context.roundRect(blockX, blockY, blockSize, blockSize, radius);
+                context.fill();
+            } else {
+                // Fallback for browsers without roundRect support
+                context.fillRect(blockX, blockY, blockSize, blockSize);
+            }
+
             context.strokeStyle = isDarkMode ? '#fff' : '#000';
             context.lineWidth = 1;
-            context.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            context.strokeRect(blockX, blockY, blockSize, blockSize);
         }
 
         function drawBoard() {
@@ -348,17 +364,17 @@
             for (let y = 0; y < ROWS; y++) {
                 for (let x = 0; x < COLS; x++) {
                     if (board[y][x]) {
-                        drawBlock(x, y, board[y][x]);
+                        drawBlock(x, y, board[y][x], ctx, BLOCK_SIZE);
                     }
                 }
             }
         }
 
-        function drawPiece(piece, context = ctx, offsetX = 0, offsetY = 0) {
+        function drawPiece(piece, context = ctx, offsetX = 0, offsetY = 0, blockSize = BLOCK_SIZE) {
             piece.shape.forEach((row, y) => {
                 row.forEach((value, x) => {
                     if (value) {
-                        drawBlock(piece.x + x + offsetX, piece.y + y + offsetY, piece.color, context);
+                        drawBlock(piece.x + x + offsetX, piece.y + y + offsetY, piece.color, context, blockSize);
                     }
                 });
             });
@@ -367,9 +383,11 @@
         function drawNextPiece() {
             nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
             if (nextPiece) {
-                const offsetX = Math.floor((nextCanvas.width / BLOCK_SIZE - nextPiece.shape[0].length) / 2);
-                const offsetY = Math.floor((nextCanvas.height / BLOCK_SIZE - nextPiece.shape.length) / 2);
-                drawPiece(nextPiece, nextCtx, offsetX, offsetY);
+                // Use larger blocks for next piece visibility
+                const nextBlockSize = 15;
+                const offsetX = Math.floor((nextCanvas.width / nextBlockSize - nextPiece.shape[0].length) / 2);
+                const offsetY = Math.floor((nextCanvas.height / nextBlockSize - nextPiece.shape.length) / 2);
+                drawPiece(nextPiece, nextCtx, offsetX, offsetY, nextBlockSize);
             }
         }
 
@@ -422,14 +440,24 @@
                 score += linesCleared * 100 * level;
                 level = Math.floor(lines / 10) + 1;
                 dropInterval = Math.max(50, 1000 - (level - 1) * 50);
+                checkHighScore();
                 updateDisplay();
             }
         }
 
         function updateDisplay() {
             document.getElementById('score').textContent = score;
+            document.getElementById('highScore').textContent = highScore;
             document.getElementById('lines').textContent = lines;
             document.getElementById('level').textContent = level;
+        }
+
+        function checkHighScore() {
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('tetrisHighScore', highScore.toString());
+                updateDisplay();
+            }
         }
 
         function gameOver() {
@@ -476,6 +504,7 @@
                 score += 2; // Bonus points for hard drop
             }
             dropPiece();
+            checkHighScore();
             updateDisplay();
         }
 
@@ -484,7 +513,7 @@
             document.body.classList.toggle('light-mode', !isDarkMode);
             document.getElementById('themeToggle').textContent = isDarkMode ? '🌙 Dark' : '☀️ Light';
             drawBoard();
-            drawPiece(currentPiece);
+            drawPiece(currentPiece, ctx, 0, 0, BLOCK_SIZE);
             drawNextPiece();
         }
 
@@ -505,7 +534,7 @@
             }
 
             drawBoard();
-            drawPiece(currentPiece);
+            drawPiece(currentPiece, ctx, 0, 0, BLOCK_SIZE);
             drawNextPiece();
 
             requestAnimationFrame(gameLoop);
@@ -533,6 +562,7 @@
                     if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
                         currentPiece.y++;
                         score += 1; // Bonus point for soft drop
+                        checkHighScore();
                         updateDisplay();
                     }
                     break;
@@ -584,6 +614,7 @@
             if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
                 currentPiece.y++;
                 score += 1;
+                checkHighScore();
                 updateDisplay();
             }
         });
@@ -604,6 +635,7 @@
         });
 
         // Initialize game
+        updateDisplay(); // Show initial high score
         resetGame();
         requestAnimationFrame(gameLoop);
     </script>
