@@ -158,16 +158,31 @@
         }
 
         .mobile-controls {
-            display: none;
+            display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 10px;
             margin-top: 20px;
+            max-width: 300px;
         }
 
         .mobile-controls button {
             padding: 15px;
             font-size: 16px;
             font-weight: bold;
+            min-width: 50px;
+            min-height: 50px;
+            touch-action: none; /* Prevent scrolling on touch */
+        }
+
+        .mobile-controls button:active {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+
+        @media (min-width: 769px) {
+            .mobile-controls {
+                display: none;
+            }
         }
 
         @media (max-width: 768px) {
@@ -213,7 +228,7 @@
         <div class="header-buttons">
             <button id="themeToggle">🌙 Dark</button>
             <button id="resetBtn">Reset</button>
-            <button id="backBtn">Back to Main</button>
+            <button id="backBtn">Back</button>
         </div>
     </div>
 
@@ -240,10 +255,10 @@
                 <h3>Controls</h3>
                 <p>← → : Move</p>
                 <p>↓ : Soft drop</p>
-                <p>↑ : Rotate</p>
+                <p>↑ / R : Rotate</p>
                 <p>Space : Hard drop</p>
                 <p>P : Pause</p>
-                <p>R : Restart</p>
+                <p>R (game over) : Restart</p>
             </div>
         </div>
     </div>
@@ -262,6 +277,11 @@
         const ctx = canvas.getContext('2d');
         const nextCanvas = document.getElementById('nextCanvas');
         const nextCtx = nextCanvas.getContext('2d');
+
+        // Ensure canvas contexts are available
+        if (!ctx || !nextCtx) {
+            alert('Canvas not supported in this browser');
+        }
 
         const COLS = 10;
         const ROWS = 20;
@@ -381,13 +401,32 @@
         }
 
         function drawNextPiece() {
-            nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-            if (nextPiece) {
-                // Use larger blocks for next piece visibility
-                const nextBlockSize = 15;
-                const offsetX = Math.floor((nextCanvas.width / nextBlockSize - nextPiece.shape[0].length) / 2);
-                const offsetY = Math.floor((nextCanvas.height / nextBlockSize - nextPiece.shape.length) / 2);
-                drawPiece(nextPiece, nextCtx, offsetX, offsetY, nextBlockSize);
+            // Ensure canvas context is available
+            if (!nextCtx) return;
+
+            // Clear the entire canvas with background color
+            nextCtx.fillStyle = isDarkMode ? '#001' : '#fff';
+            nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+
+            if (nextPiece && nextPiece.shape) {
+                try {
+                    // Use larger blocks for next piece visibility
+                    const nextBlockSize = 15;
+                    const offsetX = Math.floor((nextCanvas.width / nextBlockSize - nextPiece.shape[0].length) / 2);
+                    const offsetY = Math.floor((nextCanvas.height / nextBlockSize - nextPiece.shape.length) / 2);
+                    drawPiece(nextPiece, nextCtx, offsetX, offsetY, nextBlockSize);
+                } catch (error) {
+                    console.warn('Error drawing next piece:', error);
+                    // Fallback: draw a simple placeholder
+                    nextCtx.fillStyle = isDarkMode ? '#0ff' : '#0066cc';
+                    nextCtx.fillRect(20, 20, 60, 60);
+                }
+            } else {
+                // If no next piece, draw a question mark or placeholder
+                nextCtx.fillStyle = isDarkMode ? '#fff' : '#000';
+                nextCtx.font = '20px Arial';
+                nextCtx.textAlign = 'center';
+                nextCtx.fillText('?', nextCanvas.width / 2, nextCanvas.height / 2 + 7);
             }
         }
 
@@ -582,6 +621,8 @@
                 case 'R':
                     if (!gameRunning) {
                         resetGame();
+                    } else {
+                        rotatePiece(currentPiece);
                     }
                     break;
             }
@@ -595,22 +636,35 @@
         });
 
         // Mobile controls
-        document.getElementById('leftBtn').addEventListener('touchstart', (e) => {
-            e.preventDefault();
+        const addControlListener = (elementId, handler) => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                // Touch events for mobile
+                element.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    handler();
+                });
+                // Mouse events for desktop testing
+                element.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    handler();
+                });
+            }
+        };
+
+        addControlListener('leftBtn', () => {
             if (isValidMove(currentPiece, currentPiece.x - 1, currentPiece.y)) {
                 currentPiece.x--;
             }
         });
 
-        document.getElementById('rightBtn').addEventListener('touchstart', (e) => {
-            e.preventDefault();
+        addControlListener('rightBtn', () => {
             if (isValidMove(currentPiece, currentPiece.x + 1, currentPiece.y)) {
                 currentPiece.x++;
             }
         });
 
-        document.getElementById('downBtn').addEventListener('touchstart', (e) => {
-            e.preventDefault();
+        addControlListener('downBtn', () => {
             if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
                 currentPiece.y++;
                 score += 1;
@@ -619,18 +673,15 @@
             }
         });
 
-        document.getElementById('rotateBtn').addEventListener('touchstart', (e) => {
-            e.preventDefault();
+        addControlListener('rotateBtn', () => {
             rotatePiece(currentPiece);
         });
 
-        document.getElementById('dropBtn').addEventListener('touchstart', (e) => {
-            e.preventDefault();
+        addControlListener('dropBtn', () => {
             hardDrop();
         });
 
-        document.getElementById('pauseBtn').addEventListener('touchstart', (e) => {
-            e.preventDefault();
+        addControlListener('pauseBtn', () => {
             gameRunning = !gameRunning;
         });
 
