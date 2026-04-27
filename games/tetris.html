@@ -315,7 +315,7 @@
         let gameRunning = true;
         let dropTimer = 0;
         let dropInterval = 1000;
-        let lockDelay = 100;
+        let lockDelay = 401;
         let lockTimer = 0;
         let isDarkMode = true;
 
@@ -490,6 +490,18 @@
             }
         }
 
+        function movePieceDown() {
+            if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
+                currentPiece.y++;
+                score += 1;
+                checkHighScore();
+                updateDisplay();
+                resetGroundLock();
+                return true;
+            }
+            return false;
+        }
+
         function clearLines() {
             let linesCleared = 0;
             for (let y = ROWS - 1; y >= 0; y--) {
@@ -502,7 +514,7 @@
             }
             if (linesCleared > 0) {
                 lines += linesCleared;
-                score += linesCleared * 100 * level;
+                score += linesCleared * 20;
                 level = Math.floor(lines / 10) + 1;
                 dropInterval = Math.max(50, 1000 - (level - 1) * 50);
                 checkHighScore();
@@ -552,9 +564,7 @@
         }
 
         function dropPiece() {
-            if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
-                currentPiece.y++;
-            } else {
+            if (!movePieceDown()) {
                 placePiece(currentPiece);
                 clearLines();
                 currentPiece = nextPiece;
@@ -568,7 +578,7 @@
         function hardDrop() {
             while (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
                 currentPiece.y++;
-                score += 2; // Bonus points for hard drop
+                score += 1;
             }
             dropPiece();
             checkHighScore();
@@ -646,13 +656,7 @@
                     break;
                 case 'ArrowDown':
                     e.preventDefault();
-                    if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
-                        currentPiece.y++;
-                        score += 1; // Bonus point for soft drop
-                        checkHighScore();
-                        updateDisplay();
-                        resetGroundLock();
-                    }
+                    movePieceDown();
                     break;
                 case 'ArrowUp':
                     e.preventDefault();
@@ -718,13 +722,7 @@
         });
 
         addControlListener('wBtn', () => {
-            if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
-                currentPiece.y++;
-                score += 1;
-                checkHighScore();
-                updateDisplay();
-                resetGroundLock();
-            }
+            movePieceDown();
         });
 
         addControlListener('eBtn', () => {
