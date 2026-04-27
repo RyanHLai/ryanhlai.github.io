@@ -162,16 +162,33 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 10px;
             margin-top: 20px;
-            max-width: 300px;
+            max-width: 320px;
         }
 
         .mobile-controls button {
-            padding: 15px;
+            padding: 14px;
             font-size: 16px;
             font-weight: bold;
-            min-width: 50px;
-            min-height: 50px;
+            min-width: 60px;
+            min-height: 60px;
             touch-action: none; /* Prevent scrolling on touch */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            text-align: center;
+        }
+
+        .mobile-controls button span {
+            display: block;
+            font-size: 1.2em;
+        }
+
+        .mobile-controls button small {
+            display: block;
+            font-size: 0.75em;
+            font-weight: normal;
         }
 
         .mobile-controls button:active {
@@ -258,18 +275,19 @@
                 <p>↑ / R : Rotate</p>
                 <p>Space : Hard drop</p>
                 <p>P : Pause</p>
+                <p>Q/W/E/A/S/D on mobile match the button grid</p>
                 <p>R (game over) : Restart</p>
             </div>
         </div>
     </div>
 
     <div class="mobile-controls">
-        <button id="leftBtn">←</button>
-        <button id="rotateBtn">↻</button>
-        <button id="rightBtn">→</button>
-        <button id="downBtn">↓</button>
-        <button id="dropBtn">⬇</button>
-        <button id="pauseBtn">⏸</button>
+        <button id="qBtn"><span>Q</span><small>Reset</small></button>
+        <button id="wBtn"><span>W</span><small>Down</small></button>
+        <button id="eBtn"><span>E</span><small>Rotate</small></button>
+        <button id="aBtn"><span>A</span><small>Left</small></button>
+        <button id="sBtn"><span>S</span><small>Drop</small></button>
+        <button id="dBtn"><span>D</span><small>Right</small></button>
     </div>
 
     <script>
@@ -297,6 +315,8 @@
         let gameRunning = true;
         let dropTimer = 0;
         let dropInterval = 1000;
+        let lockDelay = 100;
+        let lockTimer = 0;
         let isDarkMode = true;
 
         const TETROMINOES = [
@@ -464,6 +484,12 @@
             });
         }
 
+        function resetGroundLock() {
+            if (!isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
+                lockTimer = 0;
+            }
+        }
+
         function clearLines() {
             let linesCleared = 0;
             for (let y = ROWS - 1; y >= 0; y--) {
@@ -517,6 +543,8 @@
             lines = 0;
             level = 1;
             dropInterval = 1000;
+            dropTimer = 0;
+            lockTimer = 0;
             gameRunning = true;
             currentPiece = createPiece(Math.floor(Math.random() * TETROMINOES.length));
             nextPiece = createPiece(Math.floor(Math.random() * TETROMINOES.length));
@@ -566,10 +594,28 @@
             const deltaTime = currentTime - lastTime;
             lastTime = currentTime;
 
-            dropTimer += deltaTime;
-            if (dropTimer >= dropInterval) {
-                dropPiece();
+            const canFall = isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1);
+            if (canFall) {
+                lockTimer = 0;
+                dropTimer += deltaTime;
+                if (dropTimer >= dropInterval) {
+                    dropPiece();
+                    dropTimer = 0;
+                }
+            } else {
                 dropTimer = 0;
+                lockTimer += deltaTime;
+                if (lockTimer >= lockDelay) {
+                    placePiece(currentPiece);
+                    clearLines();
+                    currentPiece = nextPiece;
+                    nextPiece = createPiece(Math.floor(Math.random() * TETROMINOES.length));
+                    if (!isValidMove(currentPiece, currentPiece.x, currentPiece.y)) {
+                        gameOver();
+                    }
+                    lockTimer = 0;
+                    dropTimer = 0;
+                }
             }
 
             drawBoard();
@@ -588,12 +634,14 @@
                     e.preventDefault();
                     if (isValidMove(currentPiece, currentPiece.x - 1, currentPiece.y)) {
                         currentPiece.x--;
+                        resetGroundLock();
                     }
                     break;
                 case 'ArrowRight':
                     e.preventDefault();
                     if (isValidMove(currentPiece, currentPiece.x + 1, currentPiece.y)) {
                         currentPiece.x++;
+                        resetGroundLock();
                     }
                     break;
                 case 'ArrowDown':
@@ -603,11 +651,13 @@
                         score += 1; // Bonus point for soft drop
                         checkHighScore();
                         updateDisplay();
+                        resetGroundLock();
                     }
                     break;
                 case 'ArrowUp':
                     e.preventDefault();
                     rotatePiece(currentPiece);
+                    resetGroundLock();
                     break;
                 case ' ': // Space bar for hard drop
                     e.preventDefault();
@@ -623,6 +673,7 @@
                         resetGame();
                     } else {
                         rotatePiece(currentPiece);
+                        resetGroundLock();
                     }
                     break;
             }
@@ -652,37 +703,41 @@
             }
         };
 
-        addControlListener('leftBtn', () => {
+        addControlListener('aBtn', () => {
             if (isValidMove(currentPiece, currentPiece.x - 1, currentPiece.y)) {
                 currentPiece.x--;
+                resetGroundLock();
             }
         });
 
-        addControlListener('rightBtn', () => {
+        addControlListener('dBtn', () => {
             if (isValidMove(currentPiece, currentPiece.x + 1, currentPiece.y)) {
                 currentPiece.x++;
+                resetGroundLock();
             }
         });
 
-        addControlListener('downBtn', () => {
+        addControlListener('wBtn', () => {
             if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
                 currentPiece.y++;
                 score += 1;
                 checkHighScore();
                 updateDisplay();
+                resetGroundLock();
             }
         });
 
-        addControlListener('rotateBtn', () => {
+        addControlListener('eBtn', () => {
             rotatePiece(currentPiece);
+            resetGroundLock();
         });
 
-        addControlListener('dropBtn', () => {
+        addControlListener('sBtn', () => {
             hardDrop();
         });
 
-        addControlListener('pauseBtn', () => {
-            gameRunning = !gameRunning;
+        addControlListener('qBtn', () => {
+            resetGame();
         });
 
         // Initialize game
