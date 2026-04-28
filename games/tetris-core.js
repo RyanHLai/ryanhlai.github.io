@@ -132,8 +132,9 @@ function getColorArray() {
 function updateBorderColor() {
     if (!currentPiece) return;
     const colorArray = getColorArray();
-    const borderColor = colorArray[currentPiece.color] || (isDarkMode ? '#0ff' : '#0066cc');
-    document.documentElement.style.setProperty('--border-color', borderColor);
+    const pieceColor = colorArray[currentPiece.color] || (isDarkMode ? '#0ff' : '#0066cc');
+    document.documentElement.style.setProperty('--border-color', pieceColor);
+    document.documentElement.style.setProperty('--accent-color', pieceColor);
 }
 
 function drawBlock(x, y, color, context = ctx, blockSize = BLOCK_SIZE) {
@@ -278,6 +279,8 @@ function toggleTheme() {
     isDarkMode = !isDarkMode;
     document.body.classList.toggle('light-mode', !isDarkMode);
     document.getElementById('themeToggle').textContent = isDarkMode ? '🌙 Dark' : '☀️ Light';
+    const defaultAccent = isDarkMode ? '#0ff' : '#0066cc';
+    document.documentElement.style.setProperty('--accent-color', defaultAccent);
     updateBorderColor();
     drawBoard();
     drawPiece(currentPiece);
@@ -297,6 +300,8 @@ function resetGame() {
     lastTime = 0;
     currentPiece = createPiece(Math.floor(Math.random() * TETROMINOES.length));
     nextPiece = createPiece(Math.floor(Math.random() * TETROMINOES.length));
+    const defaultAccent = isDarkMode ? '#0ff' : '#0066cc';
+    document.documentElement.style.setProperty('--accent-color', defaultAccent);
     updateBorderColor();
     updateDisplay();
     drawBoard();
