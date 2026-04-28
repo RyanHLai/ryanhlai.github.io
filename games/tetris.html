@@ -159,10 +159,10 @@
 
         .mobile-controls {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
             margin-top: 20px;
-            max-width: 320px;
+            max-width: 360px;
         }
 
         .mobile-controls button {
@@ -245,6 +245,7 @@
         <div class="header-buttons">
             <button id="themeToggle">🌙 Dark</button>
             <button id="resetBtn">Reset</button>
+            <button id="pauseBtn">Pause</button>
             <button id="backBtn">Back</button>
         </div>
     </div>
@@ -283,10 +284,11 @@
 
     <div class="mobile-controls">
         <button id="qBtn"><span>Q</span><small>Reset</small></button>
-        <button id="wBtn"><span>W</span><small>Down</small></button>
+        <button id="wBtn"><span>W</span><small>Drop</small></button>
         <button id="eBtn"><span>E</span><small>Rotate</small></button>
+        <button id="rBtn"><span>R</span><small>Pause</small></button>
         <button id="aBtn"><span>A</span><small>Left</small></button>
-        <button id="sBtn"><span>S</span><small>Drop</small></button>
+        <button id="sBtn"><span>S</span><small>Down</small></button>
         <button id="dBtn"><span>D</span><small>Right</small></button>
     </div>
 
@@ -315,7 +317,7 @@
         let gameRunning = true;
         let dropTimer = 0;
         let dropInterval = 1000;
-        let lockDelay = 401;
+        let lockDelay = 139;
         let lockTimer = 0;
         let isDarkMode = true;
 
@@ -686,6 +688,9 @@
         // Button event listeners
         document.getElementById('themeToggle').addEventListener('click', toggleTheme);
         document.getElementById('resetBtn').addEventListener('click', resetGame);
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            gameRunning = !gameRunning;
+        });
         document.getElementById('backBtn').addEventListener('click', () => {
             window.location.href = '/';
         });
@@ -722,7 +727,7 @@
         });
 
         addControlListener('wBtn', () => {
-            movePieceDown();
+            hardDrop();
         });
 
         addControlListener('eBtn', () => {
@@ -730,12 +735,16 @@
             resetGroundLock();
         });
 
-        addControlListener('sBtn', () => {
-            hardDrop();
+        addControlListener('rBtn', () => {
+            gameRunning = !gameRunning;
         });
 
-        addControlListener('qBtn', () => {
-            resetGame();
+        addControlListener('sBtn', () => {
+            movePieceDown();
+        });
+
+        addControlListener('rBtn', () => {
+            gameRunning = !gameRunning;
         });
 
         // Initialize game
