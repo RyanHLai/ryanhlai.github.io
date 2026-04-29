@@ -56,6 +56,26 @@
             gap: 10px;
         }
 
+        #testResults {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--secondary-bg);
+            border: 2px solid var(--border-color);
+            padding: 20px;
+            border-radius: 5px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        #testResults .pass { color: #8ef; }
+        #testResults .fail { color: #f66; }
+        #testResults .summary { margin-top: 20px; }
+
         button {
             background: var(--secondary-bg);
             color: var(--text-color);
@@ -244,8 +264,10 @@
         <h1>Tetris</h1>
         <div class="header-buttons">
             <button id="themeToggle">🌙 Dark</button>
+            <button id="testBtn">Test</button>
             <button id="resetBtn">Reset</button>
             <button id="pauseBtn">Pause</button>
+            <button id="autoPlayBtn">Auto Play</button>
             <button id="backBtn">Back</button>
         </div>
     </div>
@@ -292,6 +314,92 @@
         <button id="dBtn"><span>D</span><small>Right</small></button>
     </div>
 
+    <div id="testResults">
+        <h2>Tetris Core Tests</h2>
+        <div id="testResultsContent"></div>
+        <div class="summary" id="testSummary"></div>
+        <button id="closeTestBtn">Close</button>
+    </div>
+
     <script type="module" src="./tetris-core.js"></script>
+    <script type="module">
+        import { createBoard, createPiece, rotateMatrix, isValidMove, placePiece, clearLines, TETROMINOES, COLS, ROWS } from './tetris-core.js';
+
+        const testBtn = document.getElementById('testBtn');
+        const testResults = document.getElementById('testResults');
+        const testResultsContent = document.getElementById('testResultsContent');
+        const testSummary = document.getElementById('testSummary');
+        const closeTestBtn = document.getElementById('closeTestBtn');
+
+        let passed = 0;
+        let failed = 0;
+
+        function report(name, condition) {
+            const node = document.createElement('div');
+            node.textContent = `${condition ? 'PASS' : 'FAIL'}: ${name}`;
+            node.className = condition ? 'pass' : 'fail';
+            testResultsContent.appendChild(node);
+            if (condition) passed += 1; else failed += 1;
+        }
+
+        function runTests() {
+            testResultsContent.innerHTML = '';
+            passed = 0;
+            failed = 0;
+
+            report('createPiece returns centered piece', () => {
+                const piece = createPiece(0);
+                return piece.shape && piece.x === Math.floor(COLS / 2) - Math.floor(piece.shape[0].length / 2);
+            });
+
+            report('rotateMatrix rotates T correctly', () => {
+                const rotated = rotateMatrix(TETROMINOES[2]);
+                return rotated[0][1] === 1 && rotated[1][0] === 1 && rotated[1][1] === 1 && rotated[1][2] === 1;
+            });
+
+            report('isValidMove rejects wall collision', () => {
+                const board = createBoard();
+                const piece = createPiece(0);
+                piece.x = -1;
+                return !isValidMove(board, piece, piece.x, piece.y);
+            });
+
+            report('isValidMove detects piece collision', () => {
+                const board = createBoard();
+                board[0][5] = 1;
+                const piece = createPiece(2);
+                piece.x = 4;
+                piece.y = 0;
+                return !isValidMove(board, piece, piece.x, piece.y);
+            });
+
+            report('placePiece updates board cells', () => {
+                const board = createBoard();
+                const piece = createPiece(4);
+                piece.x = 0;
+                piece.y = 0;
+                placePiece(board, piece);
+                return board[0][0] === piece.color && board[0][1] === piece.color;
+            });
+
+            report('clearLines removes completed rows', () => {
+                const board = createBoard();
+                board[ROWS - 1] = Array(COLS).fill(1);
+                const cleared = clearLines(board);
+                return cleared === 1 && board[0].every(cell => cell === 0) && board[ROWS - 1].every(cell => cell === 0);
+            });
+
+            testSummary.textContent = `Results: ${passed} passed, ${failed} failed.`;
+        }
+
+        testBtn.addEventListener('click', () => {
+            testResults.style.display = 'block';
+            runTests();
+        });
+
+        closeTestBtn.addEventListener('click', () => {
+            testResults.style.display = 'none';
+        });
+    </script>
 </body>
 </html>

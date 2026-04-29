@@ -124,6 +124,9 @@ let lockTimer = 0;
 let lockResetThisTouch = false;
 let isDarkMode = true;
 let lastTime = 0;
+let autoPlay = false;
+let autoPlayTimer = 0;
+const AUTO_PLAY_DELAY = 200; // ms between moves
 
 function getColorArray() {
     return isDarkMode ? COLORS : LIGHT_COLORS;
@@ -215,6 +218,8 @@ function checkHighScore() {
 
 function gameOver() {
     gameRunning = false;
+    autoPlay = false;
+    document.getElementById('autoPlayBtn').textContent = 'Auto Play';
     ctx.fillStyle = isDarkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = isDarkMode ? '#fff' : '#000';
@@ -298,6 +303,9 @@ function resetGame() {
     lockResetThisTouch = false;
     gameRunning = true;
     lastTime = 0;
+    autoPlay = false;
+    autoPlayTimer = 0;
+    document.getElementById('autoPlayBtn').textContent = 'Auto Play';
     currentPiece = createPiece(Math.floor(Math.random() * TETROMINOES.length));
     nextPiece = createPiece(Math.floor(Math.random() * TETROMINOES.length));
     const defaultAccent = isDarkMode ? '#0ff' : '#0066cc';
@@ -376,6 +384,39 @@ function addControlListener(elementId, handler) {
     });
 }
 
+function autoPlayMove() {
+    if (!currentPiece) return;
+
+    // Simple AI: try to move to a random valid position, rotate randomly, and sometimes hard drop
+    const actions = ['left', 'right', 'rotate', 'hardDrop'];
+    const action = actions[Math.floor(Math.random() * actions.length)];
+
+    switch (action) {
+        case 'left':
+            if (isValidMove(board, currentPiece, currentPiece.x - 1, currentPiece.y)) {
+                currentPiece.x--;
+                resetGroundLock();
+            }
+            break;
+        case 'right':
+            if (isValidMove(board, currentPiece, currentPiece.x + 1, currentPiece.y)) {
+                currentPiece.x++;
+                resetGroundLock();
+            }
+            break;
+        case 'rotate':
+            const rotated = rotateMatrix(currentPiece.shape);
+            if (isValidMove(board, currentPiece, currentPiece.x, currentPiece.y, rotated)) {
+                currentPiece.shape = rotated;
+                resetGroundLock();
+            }
+            break;
+        case 'hardDrop':
+            hardDrop();
+            break;
+    }
+}
+
 function gameLoop(currentTime) {
     if (!lastTime) lastTime = currentTime;
     const deltaTime = currentTime - lastTime;
@@ -423,6 +464,16 @@ function gameLoop(currentTime) {
     drawBoard();
     drawPiece(currentPiece);
     drawNextPiece();
+
+    // Auto-play logic
+    if (autoPlay && gameRunning) {
+        autoPlayTimer += deltaTime;
+        if (autoPlayTimer >= AUTO_PLAY_DELAY) {
+            autoPlayMove();
+            autoPlayTimer = 0;
+        }
+    }
+
     requestAnimationFrame(gameLoop);
 }
 
@@ -441,6 +492,10 @@ export function initTetrisGame() {
     document.getElementById('resetBtn')?.addEventListener('click', resetGame);
     document.getElementById('pauseBtn')?.addEventListener('click', () => {
         gameRunning = !gameRunning;
+    });
+    document.getElementById('autoPlayBtn')?.addEventListener('click', () => {
+        autoPlay = !autoPlay;
+        document.getElementById('autoPlayBtn').textContent = autoPlay ? 'Stop Auto' : 'Auto Play';
     });
     document.getElementById('backBtn')?.addEventListener('click', () => {
         window.location.href = '/';
