@@ -573,11 +573,9 @@ function makeMove(sx, sy, tx, ty, moveMeta){
     if(inCheck){
       const winner = currentSide === 'w' ? 'Black' : 'White';
       const status = `${currentSide === 'w' ? 'White' : 'Black'} is checkmated. ${winner} wins!`;
-      alert(status);
       document.getElementById('turnIndicator').textContent = status;
     } else {
       const status = 'Stalemate!';
-      alert(status);
       document.getElementById('turnIndicator').textContent = status;
     }
   } else {
@@ -648,7 +646,6 @@ document.getElementById('undoBtn').addEventListener('click', ()=>{
 });
 
 document.getElementById('restartBtn').addEventListener('click', ()=>{
-  if(!confirm('Restart the game?')) return;
   G = boardFromFEN(START_FEN);
   gameOver = false;
   updateMoveList();
