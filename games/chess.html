@@ -5,32 +5,245 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Canvas Chess</title>
 <style>
-  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display:flex; gap:20px; padding:20px; }
-  #boardWrap { position:relative; }
-  canvas { background:#ddd; display:block; border:2px solid #333; touch-action: none; }
-  #controls { max-width:360px; }
-  button { margin:6px 6px 6px 0; padding:8px 12px; font-size:14px; }
-  .info { margin-top:8px; }
-  #moves { white-space:pre-wrap; background:#f7f7f7; padding:8px; border:1px solid #ccc; max-height:400px; overflow:auto; }
-  .turn { font-weight:700; margin-bottom:6px; }
-  @media (max-width:700px){ body{flex-direction:column; align-items:flex-start;} }
+  :root {
+    --bg-color: #000;
+    --panel-bg: #001115;
+    --panel-alt: #021b20;
+    --border-color: #00f0ff;
+    --border-soft: rgba(0, 240, 255, 0.4);
+    --text-color: #eafcff;
+    --muted-color: #9edfe7;
+    --accent-color: #00f0ff;
+    --shadow-color: rgba(0, 240, 255, 0.38);
+    --light-square: #f0d9b5;
+    --dark-square: #b58863;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+  }
+
+  .game-shell {
+    width: min(100%, 980px);
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .top-bar a {
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  h1 {
+    margin: 0;
+    color: var(--accent-color);
+    font-size: clamp(1.6rem, 2vw, 2.2rem);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-shadow: 0 0 12px var(--shadow-color);
+  }
+
+  .game-layout {
+    display: flex;
+    gap: 22px;
+    align-items: flex-start;
+  }
+
+  #boardWrap {
+    position: relative;
+    background: var(--panel-bg);
+    border: 3px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 0 18px var(--shadow-color);
+    padding: 8px;
+  }
+
+  canvas {
+    display: block;
+    background: var(--panel-alt);
+    border-radius: 6px;
+    touch-action: none;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.25);
+  }
+
+  #controls {
+    flex: 1;
+    min-width: 280px;
+    max-width: 360px;
+    background: var(--panel-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 0 16px var(--shadow-color);
+    padding: 18px 16px 14px;
+  }
+
+  .turn {
+    margin-bottom: 12px;
+    color: var(--accent-color);
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 10px var(--shadow-color);
+  }
+
+  button {
+    margin: 6px 6px 6px 0;
+    padding: 9px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    background: var(--panel-alt);
+    color: var(--text-color);
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.16);
+  }
+
+  button:hover {
+    background: var(--accent-color);
+    color: #000;
+    transform: translateY(-1px);
+    box-shadow: 0 0 12px var(--shadow-color);
+  }
+
+  .info {
+    margin-top: 12px;
+    line-height: 1.5;
+    color: var(--muted-color);
+    font-size: 0.95rem;
+  }
+
+  .info strong {
+    color: var(--text-color);
+  }
+
+  .promotion-panel {
+    display: none;
+    margin-top: 14px;
+    background: var(--panel-alt);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 0 12px var(--shadow-color);
+  }
+
+  .promotion-panel.visible {
+    display: block;
+  }
+
+  .promotion-panel h3 {
+    margin-top: 0;
+  }
+
+  .promotion-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .promotion-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  h3 {
+    margin: 14px 0 8px;
+    color: var(--accent-color);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+  }
+
+  #moves {
+    white-space: pre-wrap;
+    background: #021113;
+    padding: 10px 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: 6px;
+    max-height: 400px;
+    overflow: auto;
+    color: var(--text-color);
+    line-height: 1.6;
+    font-size: 0.92rem;
+  }
+
+  @media (max-width: 760px) {
+    body {
+      padding: 12px;
+    }
+
+    .game-layout {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #controls {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .top-bar {
+      flex-wrap: wrap;
+    }
+  }
 </style>
 </head>
 <body>
-<p style="margin:0 0 10px 20px"><a href="/" style="color:#333;text-decoration:none;font-size:14px">&larr; Home</a></p>
-<div id="boardWrap">
-  <canvas id="board" width="640" height="640"></canvas>
-</div>
+  <div class="game-shell">
+    <div class="top-bar">
+      <a href="/" aria-label="Back to home">&larr; Home</a>
+      <h1>Chess</h1>
+    </div>
 
-<div id="controls">
-  <div class="turn" id="turnIndicator">White to move</div>
-  <button id="undoBtn">Undo</button>
-  <button id="restartBtn">Restart</button>
-  <button id="flipBtn">Flip Board</button>
-  <div class="info"><strong>How to play</strong>: click a piece then a destination. Promotion uses a prompt (q/r/b/n)</div>
-  <h3>Move history</h3>
-  <div id="moves"></div>
-</div>
+    <div class="game-layout">
+      <div id="boardWrap">
+        <canvas id="board" width="640" height="640"></canvas>
+      </div>
+
+      <div id="controls">
+        <div class="turn" id="turnIndicator">White to move</div>
+        <button id="undoBtn">Undo</button>
+        <button id="restartBtn">Restart</button>
+        <button id="flipBtn">Flip Board</button>
+        <div class="info"><strong>How to play</strong>: click a piece then a destination.</div>
+        <div id="promotionPanel" class="promotion-panel" aria-live="polite">
+          <h3>Choose promotion</h3>
+          <div class="promotion-buttons">
+            <button class="promotion-btn" data-piece="q">Queen</button>
+            <button class="promotion-btn" data-piece="r">Rook</button>
+            <button class="promotion-btn" data-piece="b">Bishop</button>
+            <button class="promotion-btn" data-piece="n">Knight</button>
+          </div>
+        </div>
+        <h3>Move history</h3>
+        <div id="moves"></div>
+      </div>
+    </div>
+  </div>
 
 <script>
 /*****************************************************************************
@@ -92,6 +305,8 @@ let flipped = false;
 let selected = null; // {x,y}
 let legalMoves = []; // list of {x,y, special, promoteTo}
 let gameOver = false;
+let pendingPromotion = null;
+const promotionPanel = document.getElementById('promotionPanel');
 
 // --- Canvas drawing
 const canvas = document.getElementById('board');
@@ -214,7 +429,10 @@ function handleSquareClick(x,y){
     // if clicking on a square that's a legal destination -> move
     const move = legalMoves.find(m => m.x === x && m.y === y);
     if(move){
-      makeMove(selected.x, selected.y, x, y, move);
+      const executed = makeMove(selected.x, selected.y, x, y, move);
+      if(!executed){
+        return;
+      }
       selected = null; legalMoves = [];
       draw();
       updateUI();
@@ -477,20 +695,42 @@ function applyMoveOnBoard(state, sx, sy, tx, ty, moveMeta){
 }
 
 // --- Make move on global state G
+function hidePromotionPanel(){
+  promotionPanel.classList.remove('visible');
+}
+
+function showPromotionPanel(){
+  promotionPanel.classList.add('visible');
+}
+
+function completePromotion(choice){
+  if(!pendingPromotion) return;
+  const { sx, sy, tx, ty, moveMeta } = pendingPromotion;
+  pendingPromotion = null;
+  hidePromotionPanel();
+  moveMeta.promoteTo = choice;
+  commitMove(sx, sy, tx, ty, moveMeta);
+  selected = null;
+  legalMoves = [];
+  draw();
+  updateUI();
+}
+
 function makeMove(sx, sy, tx, ty, moveMeta){
-  if(gameOver) return;
-  // moveMeta may be from pseudo-legal list
-  const piece = G.board[sy][sx];
-  const san = coordsToPos(sx,sy) + coordsToPos(tx,ty);
-  // if promotion and no promoteTo specified, prompt
+  if(gameOver) return false;
+
   if(moveMeta.promo && !moveMeta.promoteTo){
-    let ans = prompt("Promote to (q/r/b/n):", "q");
-    if(!ans) ans = 'q';
-    ans = ans.toLowerCase()[0];
-    if(!'qrbn'.includes(ans)) ans = 'q';
-    moveMeta.promoteTo = ans;
+    pendingPromotion = { sx, sy, tx, ty, moveMeta };
+    showPromotionPanel();
+    return false;
   }
-  // store history for undo
+
+  commitMove(sx, sy, tx, ty, moveMeta);
+  return true;
+}
+
+function commitMove(sx, sy, tx, ty, moveMeta){
+  const piece = G.board[sy][sx];
   G.history.push({
     move: [sx,sy,tx,ty],
     piece: {...piece},
@@ -500,13 +740,12 @@ function makeMove(sx, sy, tx, ty, moveMeta){
     halfmove: G.halfmove,
     fullmove: G.fullmove
   });
-  // apply special actions
-  // en-passant capture
+
   if(moveMeta.enpassant){
     const capY = piece.color === 'w' ? ty + 1 : ty - 1;
     G.board[capY][tx] = null;
   }
-  // castling
+
   if(moveMeta.castle){
     if(moveMeta.castle === 'K'){
       const row = piece.color === 'w' ? 7 : 0;
@@ -522,7 +761,6 @@ function makeMove(sx, sy, tx, ty, moveMeta){
       G.board[row][3] = {type:'r', color:piece.color};
     }
   } else {
-    // normal move / promotion
     G.board[sy][sx] = null;
     if(moveMeta.promo){
       G.board[ty][tx] = {type: moveMeta.promoteTo || 'q', color: piece.color};
@@ -530,7 +768,7 @@ function makeMove(sx, sy, tx, ty, moveMeta){
       G.board[ty][tx] = {type: piece.type, color: piece.color};
     }
   }
-  // update castling rights if king or rook moved/captured
+
   if(piece.type === 'k'){
     if(piece.color === 'w'){ G.castling.K = false; G.castling.Q = false; }
     else { G.castling.k = false; G.castling.q = false; }
@@ -541,28 +779,22 @@ function makeMove(sx, sy, tx, ty, moveMeta){
     if(sx === 0 && sy === 0) G.castling.q = false;
     if(sx === 7 && sy === 0) G.castling.k = false;
   }
-  // if rook was captured, update castling rights
   if(G.history[G.history.length-1].captured && G.history[G.history.length-1].captured.type === 'r'){
-    const cap = G.history[G.history.length-1].captured;
     const [capx, capy] = [tx, ty];
-    // check positions
     if(capx === 0 && capy === 7) G.castling.Q = false;
     if(capx === 7 && capy === 7) G.castling.K = false;
     if(capx === 0 && capy === 0) G.castling.q = false;
     if(capx === 7 && capy === 0) G.castling.k = false;
   }
-  // en-passant target square: only when a pawn moved two
   if(piece.type === 'p' && Math.abs(ty - sy) === 2){
     G.enPassant = [sx, (sy + ty)/2];
   } else {
     G.enPassant = null;
   }
-  // update half/full move counters
   if(piece.type === 'p' || (G.history[G.history.length-1].captured)) G.halfmove = 0; else G.halfmove++;
   if(G.turn === 'b') G.fullmove++;
-  // switch turn
   G.turn = G.turn === 'w' ? 'b' : 'w';
-  // update UI message (check/checkmate could be checked)
+
   const currentSide = G.turn;
   const king = findKing(currentSide, G.board);
   const inCheck = king ? isSquareAttacked(king.x, king.y, G, currentSide === 'w' ? 'b' : 'w') : false;
@@ -575,16 +807,15 @@ function makeMove(sx, sy, tx, ty, moveMeta){
       const status = `${currentSide === 'w' ? 'White' : 'Black'} is checkmated. ${winner} wins!`;
       document.getElementById('turnIndicator').textContent = status;
     } else {
-      const status = 'Stalemate!';
-      document.getElementById('turnIndicator').textContent = status;
+      document.getElementById('turnIndicator').textContent = 'Stalemate!';
     }
   } else {
     gameOver = false;
-    if(inCheck){
-      document.getElementById('turnIndicator').textContent = `${currentSide === 'w' ? 'White' : 'Black'} is in check`;
-    }
+    document.getElementById('turnIndicator').textContent = inCheck
+      ? `${currentSide === 'w' ? 'White' : 'Black'} is in check`
+      : `${currentSide === 'w' ? 'White' : 'Black'} to move`;
   }
-  // store move notation to history display minimal
+
   updateMoveList();
 }
 
@@ -648,9 +879,17 @@ document.getElementById('undoBtn').addEventListener('click', ()=>{
 document.getElementById('restartBtn').addEventListener('click', ()=>{
   G = boardFromFEN(START_FEN);
   gameOver = false;
+  pendingPromotion = null;
+  hidePromotionPanel();
   updateMoveList();
   selected = null; legalMoves = [];
   draw(); updateUI();
+});
+
+document.querySelectorAll('.promotion-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    completePromotion(btn.dataset.piece);
+  });
 });
 document.getElementById('flipBtn').addEventListener('click', ()=>{
   flipped = !flipped;
