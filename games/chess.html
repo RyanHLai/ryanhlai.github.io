@@ -89,12 +89,20 @@ function boardFromFEN(fen){
 // --- Game state
 let G = boardFromFEN(START_FEN);
 let flipped = false;
+let selected = null; // {x,y}
+let legalMoves = []; // list of {x,y, special, promoteTo}
+let gameOver = false;
 
 // --- Canvas drawing
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 let size = canvas.width;
 let squareSize = size / 8;
+
+const pieceSymbols = {
+  wp: 'P', wr: 'R', wn: 'N', wb: 'B', wq: 'Q', wk: 'K',
+  bp: 'p', br: 'r', bn: 'n', bb: 'b', bq: 'q', bk: 'k'
+};
 
 function resizeCanvas(){
   const min = Math.min(window.innerWidth - 420, window.innerHeight - 60);
@@ -107,11 +115,6 @@ function resizeCanvas(){
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
-
-const pieceSymbols = {
-  wp: '♙', wr: '♖', wn: '♘', wb: '♗', wq: '♕', wk: '♔',
-  bp: '♟', br: '♜', bn: '♞', bb: '♝', bq: '♛', bk: '♚'
-};
 
 function draw(){
   ctx.clearRect(0,0,size,size);
@@ -145,7 +148,7 @@ function draw(){
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const fontSize = Math.floor(squareSize * 0.68);
-  ctx.font = `${fontSize}px serif`;
+  ctx.font = `bold ${fontSize}px Arial, sans-serif`;
   for(let y=0;y<8;y++){
     for(let x=0;x<8;x++){
       const piece = G.board[y][x];
@@ -180,8 +183,6 @@ function drawCircle(x,y,style){
 }
 
 // --- Input handling
-let selected = null; // {x,y}
-let legalMoves = []; // list of {x,y, special, promoteTo}
 canvas.addEventListener('click', ev => {
   const rect = canvas.getBoundingClientRect();
   const cx = ev.clientX - rect.left;
@@ -477,6 +478,7 @@ function applyMoveOnBoard(state, sx, sy, tx, ty, moveMeta){
 
 // --- Make move on global state G
 function makeMove(sx, sy, tx, ty, moveMeta){
+  if(gameOver) return;
   // moveMeta may be from pseudo-legal list
   const piece = G.board[sy][sx];
   const san = coordsToPos(sx,sy) + coordsToPos(tx,ty);
@@ -561,16 +563,28 @@ function makeMove(sx, sy, tx, ty, moveMeta){
   // switch turn
   G.turn = G.turn === 'w' ? 'b' : 'w';
   // update UI message (check/checkmate could be checked)
-  const oppKing = findKing(G.turn, G.board);
-  const inCheck = oppKing ? isSquareAttacked(oppKing.x, oppKing.y, G, G.turn === 'w' ? 'b' : 'w') : false;
-  // if opponent has no legal moves => checkmate or stalemate
-  const anyMoves = anyLegalMovesForSide(G.turn);
+  const currentSide = G.turn;
+  const king = findKing(currentSide, G.board);
+  const inCheck = king ? isSquareAttacked(king.x, king.y, G, currentSide === 'w' ? 'b' : 'w') : false;
+  const anyMoves = anyLegalMovesForSide(currentSide);
+
   if(!anyMoves){
-    if(inCheck) alert((G.turn === 'w' ? 'White' : 'Black') + ' is checkmated. ' + (G.turn === 'w' ? 'Black' : 'White') + ' wins!');
-    else alert('Stalemate!');
-  } else if(inCheck){
-    // notify check
-    console.log('check');
+    gameOver = true;
+    if(inCheck){
+      const winner = currentSide === 'w' ? 'Black' : 'White';
+      const status = `${currentSide === 'w' ? 'White' : 'Black'} is checkmated. ${winner} wins!`;
+      alert(status);
+      document.getElementById('turnIndicator').textContent = status;
+    } else {
+      const status = 'Stalemate!';
+      alert(status);
+      document.getElementById('turnIndicator').textContent = status;
+    }
+  } else {
+    gameOver = false;
+    if(inCheck){
+      document.getElementById('turnIndicator').textContent = `${currentSide === 'w' ? 'White' : 'Black'} is in check`;
+    }
   }
   // store move notation to history display minimal
   updateMoveList();
@@ -636,6 +650,7 @@ document.getElementById('undoBtn').addEventListener('click', ()=>{
 document.getElementById('restartBtn').addEventListener('click', ()=>{
   if(!confirm('Restart the game?')) return;
   G = boardFromFEN(START_FEN);
+  gameOver = false;
   updateMoveList();
   selected = null; legalMoves = [];
   draw(); updateUI();
@@ -658,7 +673,15 @@ function updateMoveList(){
   el.textContent = out;
 }
 function updateUI(){
-  document.getElementById('turnIndicator').textContent = (G.turn === 'w' ? 'White to move' : 'Black to move');
+  if(gameOver){
+    updateMoveList();
+    return;
+  }
+
+  const king = findKing(G.turn, G.board);
+  const inCheck = king ? isSquareAttacked(king.x, king.y, G, G.turn === 'w' ? 'b' : 'w') : false;
+  const label = (G.turn === 'w' ? 'White' : 'Black');
+  document.getElementById('turnIndicator').textContent = inCheck ? `${label} to move - check` : `${label} to move`;
   updateMoveList();
 }
 
