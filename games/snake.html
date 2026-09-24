@@ -22,19 +22,19 @@
     }
 
     body.light-mode {
-      --bg-1: #f3efe7;
-      --bg-2: #e6e0d4;
-      --panel: rgba(255, 255, 255, 0.88);
-      --panel-border: rgba(117, 116, 106, 0.45);
-      --text: #1f2430;
-      --muted: #4f5868;
-      --board-dark: #9f8b77;
-      --board-light: #f1e8d3;
-      --accent: #1f7a8c;
-      --accent-strong: #d28844;
-      --gold: #d49b00;
-      --danger: #d95d5d;
-      --shadow: rgba(75, 70, 60, 0.18);
+      --bg-1: #f1f7f1;
+      --bg-2: #dfeee0;
+      --panel: rgba(255, 255, 255, 0.96);
+      --panel-border: rgba(79, 116, 88, 0.38);
+      --text: #1b2a20;
+      --muted: #4d6257;
+      --board-dark: #bfd5b6;
+      --board-light: #f8faf6;
+      --accent: #2f7c6d;
+      --accent-strong: #b77b3a;
+      --gold: #b4800d;
+      --danger: #c64a4a;
+      --shadow: rgba(40, 62, 48, 0.12);
     }
 
     * {
@@ -49,7 +49,7 @@
       place-items: center;
       padding: 28px 18px;
       background:
-        radial-gradient(circle at top, rgba(122, 231, 207, 0.12), transparent 35%),
+        radial-gradient(circle at top, rgba(118, 200, 164, 0.18), transparent 35%),
         linear-gradient(135deg, var(--bg-1), var(--bg-2));
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -180,9 +180,9 @@
       margin: 0 auto;
       border-radius: 22px;
       padding: 12px;
-      background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-      border: 1px solid rgba(255,255,255,0.12);
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+      background: linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));
+      border: 2px solid rgba(32, 29, 26, 0.68);
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.18), 0 16px 28px rgba(17, 24, 39, 0.18);
     }
 
     canvas {
@@ -193,7 +193,8 @@
       margin: 0 auto;
       border-radius: 16px;
       background: var(--board-dark);
-      box-shadow: inset 0 0 0 3px rgba(17, 24, 39, 0.15), 0 12px 30px rgba(0, 0, 0, 0.2);
+      border: none;
+      box-shadow: inset 0 0 0 3px rgba(17, 24, 39, 0.15), 0 12px 30px rgba(0, 0, 0, 0.18);
     }
 
     .overlay {
@@ -201,11 +202,15 @@
       inset: 12px;
       display: grid;
       place-items: center;
-      background: rgba(8, 11, 17, 0.2);
+      background: rgba(9, 12, 18, 0.18);
       border-radius: 16px;
       opacity: 1;
       pointer-events: auto;
       transition: opacity 0.2s ease;
+    }
+
+    body.light-mode .overlay {
+      background: rgba(255, 255, 255, 0.22);
     }
 
     .overlay.hidden {
@@ -221,6 +226,12 @@
       border: 1px solid rgba(122, 231, 207, 0.45);
       text-align: center;
       box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+    }
+
+    body.light-mode .overlay-card {
+      background: rgba(255, 255, 255, 0.96);
+      border-color: rgba(108, 92, 72, 0.35);
+      box-shadow: 0 18px 40px rgba(82, 67, 55, 0.12);
     }
 
     .overlay-card p {
@@ -240,9 +251,14 @@
     .mini-button {
       padding: 0.7rem 1rem;
       background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-      color: #111827;
+      color: #f9fafb;
       border: 0;
       font-weight: 700;
+    }
+
+    body.light-mode .mini-button {
+      background: linear-gradient(135deg, #2f7c6d, #8ccf9a);
+      color: #f6f1ea;
     }
 
     .control-bar {
@@ -347,10 +363,10 @@
 
       <div class="controls">
         <div class="dpad" aria-label="Game controls">
-          <button class="up" data-dir="ArrowUp" type="button" aria-label="Move up">⬆</button>
-          <button class="left" data-dir="ArrowLeft" type="button" aria-label="Move left">⬅</button>
-          <button class="right" data-dir="ArrowRight" type="button" aria-label="Move right">➡</button>
-          <button class="down" data-dir="ArrowDown" type="button" aria-label="Move down">⬇</button>
+          <button class="up" data-dir="ArrowUp" type="button" aria-label="Move up">▲</button>
+          <button class="left" data-dir="ArrowLeft" type="button" aria-label="Move left">◀</button>
+          <button class="right" data-dir="ArrowRight" type="button" aria-label="Move right">▶</button>
+          <button class="down" data-dir="ArrowDown" type="button" aria-label="Move down">▼</button>
         </div>
       </div>
     </main>
