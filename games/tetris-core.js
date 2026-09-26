@@ -118,6 +118,8 @@ let highScore = parseInt(localStorage.getItem('tetrisHighScore')) || 0;
 let currentPiece = null;
 let nextPiece = null;
 let gameRunning = true;
+let isPaused = false;
+let isGameOver = false;
 let dropTimer = 0;
 let dropInterval = 1000;
 let lockTimer = 0;
@@ -196,9 +198,9 @@ function drawNextPiece() {
     }
 
     const nextBlockSize = 15;
-    const offsetX = Math.floor((nextCanvas.width / nextBlockSize - nextPiece.shape[0].length) / 2);
-    const offsetY = Math.floor((nextCanvas.height / nextBlockSize - nextPiece.shape.length) / 2);
-    drawPiece(nextPiece, nextCtx, offsetX, offsetY, nextBlockSize);
+    const offsetX = (nextCanvas.width / nextBlockSize - nextPiece.shape[0].length) / 2;
+    const offsetY = (nextCanvas.height / nextBlockSize - nextPiece.shape.length) / 2;
+    drawPiece({ ...nextPiece, x: 0, y: 0 }, nextCtx, offsetX, offsetY, nextBlockSize);
 }
 
 function updateDisplay() {
@@ -218,6 +220,11 @@ function checkHighScore() {
 
 function gameOver() {
     gameRunning = false;
+    isPaused = false;
+    isGameOver = true;
+    document.getElementById('pauseOverlay')?.classList.add('hidden');
+    document.getElementById('pauseOverlay')?.setAttribute('aria-hidden', 'true');
+    document.getElementById('pauseBtn').textContent = 'Pause';
     autoPlay = false;
     document.getElementById('autoPlayBtn').textContent = 'Auto Play';
     ctx.fillStyle = isDarkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)';
@@ -228,6 +235,22 @@ function gameOver() {
     ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2);
     ctx.font = '16px Arial';
     ctx.fillText('Press R to restart', canvas.width / 2, canvas.height / 2 + 40);
+}
+
+function setPaused(paused) {
+    if (isGameOver) return;
+
+    isPaused = paused;
+    gameRunning = !paused;
+    const pauseOverlay = document.getElementById('pauseOverlay');
+    pauseOverlay?.classList.toggle('hidden', !paused);
+    pauseOverlay?.setAttribute('aria-hidden', String(!paused));
+    document.getElementById('pauseBtn').textContent = paused ? 'Resume' : 'Pause';
+    document.getElementById(paused ? 'resumeBtn' : 'pauseBtn')?.focus();
+}
+
+function togglePause() {
+    setPaused(!isPaused);
 }
 
 function resetGroundLock() {
@@ -302,6 +325,11 @@ function resetGame() {
     lockTimer = 0;
     lockResetThisTouch = false;
     gameRunning = true;
+    isPaused = false;
+    isGameOver = false;
+    document.getElementById('pauseOverlay')?.classList.add('hidden');
+    document.getElementById('pauseOverlay')?.setAttribute('aria-hidden', 'true');
+    document.getElementById('pauseBtn').textContent = 'Pause';
     lastTime = 0;
     autoPlay = false;
     autoPlayTimer = 0;
@@ -317,7 +345,15 @@ function resetGame() {
 }
 
 function handleInput(event) {
-    if (!gameRunning && event.key.toLowerCase() !== 'r') return;
+    const key = event.key.toLowerCase();
+    if (isGameOver) {
+        if (key === 'r') resetGame();
+        return;
+    }
+    if (isPaused) {
+        if (key === 'p') togglePause();
+        return;
+    }
 
     switch (event.key) {
         case 'ArrowLeft':
@@ -352,19 +388,15 @@ function handleInput(event) {
             break;
         case 'p':
         case 'P':
-            gameRunning = !gameRunning;
+            togglePause();
             break;
         case 'r':
         case 'R':
-            if (!gameRunning) {
-                resetGame();
-            } else {
-                const rotatedR = rotateMatrix(currentPiece.shape);
-                if (isValidMove(board, currentPiece, currentPiece.x, currentPiece.y, rotatedR)) {
-                    currentPiece.shape = rotatedR;
-                }
-                resetGroundLock();
+            const rotatedR = rotateMatrix(currentPiece.shape);
+            if (isValidMove(board, currentPiece, currentPiece.x, currentPiece.y, rotatedR)) {
+                currentPiece.shape = rotatedR;
             }
+            resetGroundLock();
             break;
     }
 }
@@ -490,9 +522,8 @@ export function initTetrisGame() {
     document.addEventListener('keydown', handleInput);
     document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
     document.getElementById('resetBtn')?.addEventListener('click', resetGame);
-    document.getElementById('pauseBtn')?.addEventListener('click', () => {
-        gameRunning = !gameRunning;
-    });
+    document.getElementById('pauseBtn')?.addEventListener('click', togglePause);
+    document.getElementById('resumeBtn')?.addEventListener('click', togglePause);
     document.getElementById('autoPlayBtn')?.addEventListener('click', () => {
         autoPlay = !autoPlay;
         document.getElementById('autoPlayBtn').textContent = autoPlay ? 'Stop Auto' : 'Auto Play';
@@ -524,7 +555,7 @@ export function initTetrisGame() {
         resetGroundLock();
     });
     addControlListener('rBtn', () => {
-        gameRunning = !gameRunning;
+        togglePause();
     });
     addControlListener('sBtn', movePieceDown);
 

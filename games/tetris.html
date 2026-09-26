@@ -6,312 +6,448 @@
     <title>Tetris</title>
     <style>
         :root {
-            --bg-color: #000;
-            --text-color: #fff;
-            --accent-color: #0ff;
-            --secondary-bg: #001;
-            --border-color: #0ff;
-            --shadow-color: rgba(0, 255, 255, 0.3);
+            color-scheme: dark;
+            --page-top: #172326;
+            --page-bottom: #10191d;
+            --panel: rgba(20, 30, 34, 0.94);
+            --panel-raised: #202d31;
+            --panel-border: color-mix(in srgb, var(--accent-color) 26%, transparent);
+            --text: #f2f5ef;
+            --muted: #aebbb4;
+            --accent: #a6e4c4;
+            --accent-color: #a6e4c4;
+            --accent-strong: #62c89a;
+            --gold: #f4cb70;
+            --danger: #f08d82;
+            --board-bg: #10191d;
+            --shadow: rgba(2, 9, 11, 0.42);
         }
 
-        .light-mode {
-            --bg-color: #f0f0f0;
-            --text-color: #000;
-            --accent-color: #0066cc;
-            --secondary-bg: #fff;
-            --border-color: #0066cc;
-            --shadow-color: rgba(0, 102, 204, 0.3);
-        }
+        * { box-sizing: border-box; }
 
         body {
-            margin: 0;
-            padding: 10px;
-            background: var(--bg-color);
-            color: var(--text-color);
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
             min-height: 100vh;
+            margin: 0;
+            padding: 28px 18px;
+            display: grid;
+            place-items: center;
+            background:
+                radial-gradient(ellipse at 50% 0%, rgba(125, 190, 155, 0.16), transparent 42%),
+                linear-gradient(145deg, var(--page-top), var(--page-bottom) 72%);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            transition: background 0.25s ease, color 0.25s ease;
         }
 
-        .header {
+        body.light-mode {
+            color-scheme: light;
+            --page-top: #e7eee7;
+            --page-bottom: #d5e1d9;
+            --panel: rgba(250, 252, 247, 0.96);
+            --panel-raised: #e8efe8;
+            --panel-border: color-mix(in srgb, var(--accent-color) 30%, transparent);
+            --text: #1e2a24;
+            --muted: #5d6d62;
+            --accent: #357c60;
+            --accent-strong: #2c986c;
+            --gold: #a76d16;
+            --danger: #b94943;
+            --board-bg: #e1e9e1;
+            --shadow: rgba(33, 57, 41, 0.14);
+        }
+
+        .page-shell { width: min(100%, 920px); }
+
+        .topbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            width: 100%;
-            max-width: 800px;
-            margin-bottom: 10px;
+            gap: 14px;
+            margin-bottom: 14px;
         }
-
-        h1 {
-            margin: 0;
-            color: var(--accent-color);
-            text-shadow: 0 0 10px var(--shadow-color);
-            font-size: 2em;
-        }
-
-        .header-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        #testResults {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: var(--secondary-bg);
-            border: 2px solid var(--border-color);
-            padding: 20px;
-            border-radius: 5px;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            z-index: 1000;
-        }
-
-        #testResults .pass { color: #8ef; }
-        #testResults .fail { color: #f66; }
-        #testResults .summary { margin-top: 20px; }
 
         button {
-            background: var(--secondary-bg);
-            color: var(--text-color);
-            border: 2px solid var(--border-color);
-            padding: 8px 16px;
-            border-radius: 5px;
+            min-height: 42px;
+            padding: 9px 14px;
+            border: 1px solid var(--accent-color);
+            border-radius: 11px;
+            background: rgba(255, 255, 255, 0.045);
+            color: var(--text);
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 650;
             cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
+            transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
         }
 
         button:hover {
-            background: var(--accent-color);
-            color: var(--bg-color);
+            transform: translateY(-1px);
+            border-color: var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 12%, transparent);
         }
 
-        .game-wrapper {
+        button:focus-visible {
+            outline: 3px solid var(--gold);
+            outline-offset: 2px;
+        }
+
+        #backBtn, #themeToggle { min-width: 112px; }
+        #backBtn { text-align: left; }
+
+        .game-card {
+            padding: 22px;
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            background: var(--panel);
+            box-shadow: 0 28px 60px var(--shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .game-meta {
             display: flex;
-            gap: 20px;
-            max-width: 800px;
-            width: 100%;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 20px;
+        }
+
+        .eyebrow, .stat-label, .panel-label {
+            color: var(--muted);
+            font-size: 0.68rem;
+            font-weight: 750;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .eyebrow { display: block; margin-bottom: 6px; }
+
+        h1 {
+            margin: 0;
+            color: var(--text);
+            font-size: 2.35rem;
+            line-height: 1;
+            letter-spacing: 0;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(84px, 1fr));
+            gap: 8px;
+        }
+
+        .stat {
+            min-width: 0;
+            padding: 9px 12px 10px;
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            background: rgba(166, 228, 196, 0.055);
+            text-align: center;
+        }
+
+        .stat-label { display: block; margin-bottom: 3px; font-size: 0.6rem; }
+        .stat strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+
+        .game-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 230px;
+            align-items: start;
+            gap: 18px;
         }
 
         #gameContainer {
             position: relative;
-            width: 400px;
-            height: 600px;
-            border: 3px solid var(--border-color);
-            background: var(--secondary-bg);
+            width: min(100%, 340px);
+            aspect-ratio: 1 / 2;
+            margin: 0 auto;
             overflow: hidden;
-            box-shadow: 0 0 20px var(--shadow-color);
+            border: 2px solid color-mix(in srgb, var(--accent-color) 72%, transparent);
+            border-radius: 16px;
+            background-color: var(--board-bg);
+            background-image:
+                linear-gradient(color-mix(in srgb, var(--accent-color) 8%, transparent) 1px, transparent 1px),
+                linear-gradient(90deg, color-mix(in srgb, var(--accent-color) 8%, transparent) 1px, transparent 1px);
+            background-size: 10% 5%;
+            box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.2), 0 16px 30px var(--shadow);
         }
 
         #gameCanvas {
+            position: absolute;
+            inset: 0;
             display: block;
             width: 100%;
             height: 100%;
             background: transparent;
         }
 
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            width: 200px;
+        .pause-overlay {
+            position: absolute;
+            z-index: 2;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 18px;
+            background: rgba(8, 14, 16, 0.64);
+            backdrop-filter: blur(4px);
+            transition: opacity 0.2s ease, visibility 0.2s ease;
         }
 
-        .stats {
-            background: var(--secondary-bg);
-            border: 2px solid var(--border-color);
-            padding: 15px;
-            border-radius: 5px;
+        body.light-mode .pause-overlay { background: rgba(255, 255, 255, 0.64); }
+
+        .pause-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
         }
 
-        .stats h3 {
-            margin: 0 0 10px 0;
-            color: var(--accent-color);
-        }
-
-        .stats p {
-            margin: 5px 0;
-            font-size: 16px;
-        }
-
-        #nextPiece {
-            background: var(--secondary-bg);
-            border: 2px solid var(--border-color);
-            padding: 10px;
-            border-radius: 5px;
+        .pause-card {
+            width: min(100%, 230px);
+            padding: 20px 16px;
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            background: var(--panel);
             text-align: center;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
         }
 
-        #nextPiece h3 {
-            margin: 0 0 10px 0;
-            color: var(--accent-color);
+        .pause-card p {
+            margin: 0 0 6px;
+            color: var(--muted);
+            font-size: 0.66rem;
+            font-weight: 750;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
         }
+
+        .pause-card h2 {
+            margin: 0 0 16px;
+            font-size: 1.8rem;
+        }
+
+        #resumeBtn {
+            width: 100%;
+            border-color: var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 18%, var(--panel-raised));
+            color: var(--text);
+        }
+
+        .sidebar { display: grid; gap: 12px; }
+
+        .side-panel {
+            padding: 14px;
+            border: 1px solid var(--panel-border);
+            border-radius: 13px;
+            background: var(--panel-raised);
+        }
+
+        .panel-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .panel-heading h2 {
+            margin: 0;
+            color: var(--text);
+            font-size: 0.93rem;
+            letter-spacing: 0;
+        }
+
+        .panel-label { color: var(--accent-color); font-size: 0.58rem; }
 
         #nextCanvas {
             display: block;
             width: 100%;
-            height: 100px;
-            background: transparent;
-        }
-
-        .controls {
-            background: var(--secondary-bg);
-            border: 2px solid var(--border-color);
-            padding: 15px;
-            border-radius: 5px;
-        }
-
-        .controls h3 {
-            margin: 0 0 10px 0;
-            color: var(--accent-color);
+            height: 96px;
+            border-radius: 9px;
+            background: var(--board-bg);
         }
 
         .controls p {
-            margin: 5px 0;
-            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 0.83rem;
         }
+
+        .controls kbd {
+            padding: 2px 6px;
+            border: 1px solid var(--panel-border);
+            border-radius: 5px;
+            color: var(--text);
+            font: inherit;
+            font-size: 0.72rem;
+            white-space: nowrap;
+        }
+
+        .action-bar {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 18px 0 0;
+        }
+
+        .action-bar button { min-width: 104px; }
+        #pauseBtn {
+            border-color: var(--accent-color);
+            background: color-mix(in srgb, var(--accent-color) 18%, var(--panel-raised));
+            color: var(--text);
+        }
+        #testBtn { color: var(--muted); }
 
         .mobile-controls {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-top: 20px;
-            max-width: 360px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            width: min(100%, 420px);
+            margin: 14px auto 0;
         }
 
         .mobile-controls button {
-            padding: 14px;
-            font-size: 16px;
-            font-weight: bold;
-            min-width: 60px;
-            min-height: 60px;
-            touch-action: none; /* Prevent scrolling on touch */
             display: flex;
+            min-height: 58px;
             flex-direction: column;
-            align-items: center;
             justify-content: center;
-            gap: 4px;
-            text-align: center;
+            align-items: center;
+            gap: 2px;
+            padding: 6px;
+            touch-action: none;
         }
 
-        .mobile-controls button span {
-            display: block;
-            font-size: 1.2em;
+        .mobile-controls button span { font-size: 1.05rem; }
+        .mobile-controls button small { color: var(--muted); font-size: 0.65rem; }
+        .mobile-controls button:active { transform: scale(0.97); }
+
+        #testResults {
+            display: none;
+            position: fixed;
+            z-index: 10;
+            top: 50%;
+            left: 50%;
+            width: min(calc(100% - 32px), 560px);
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 22px;
+            transform: translate(-50%, -50%);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            background: var(--panel);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
         }
 
-        .mobile-controls button small {
-            display: block;
-            font-size: 0.75em;
-            font-weight: normal;
+        #testResults h2 { margin: 0 0 14px; font-size: 1.2rem; }
+        #testResults .pass { color: var(--accent); }
+        #testResults .fail { color: var(--danger); }
+        #testResults .summary { margin: 16px 0; }
+
+        @media (min-width: 700px) {
+            .mobile-controls { display: none; }
         }
 
-        .mobile-controls button:active {
-            transform: scale(0.95);
-            opacity: 0.8;
+        @media (max-width: 699px) {
+            body { padding: 16px 12px; place-items: start center; }
+            .game-card { padding: 17px 12px; }
+            .game-meta { align-items: flex-start; flex-direction: column; }
+            .stats { width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+            .stat { padding: 8px 5px; }
+            .stat strong { font-size: 1.05rem; }
+            .game-layout { grid-template-columns: minmax(0, 1fr) minmax(100px, 0.62fr); gap: 10px; }
+            #gameContainer { width: 100%; }
+            .sidebar { gap: 9px; }
+            .side-panel { padding: 10px; }
+            #nextCanvas { height: 72px; }
+            .controls p { gap: 4px; font-size: 0.72rem; }
+            .controls kbd { padding: 2px 4px; font-size: 0.64rem; }
+            .action-bar { margin-top: 13px; }
+            .action-bar button { flex: 1 1 calc(33.333% - 8px); min-width: 0; }
         }
 
-        @media (min-width: 769px) {
-            .mobile-controls {
-                display: none;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .game-wrapper {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            #gameContainer {
-                width: 100%;
-                max-width: 400px;
-                height: 500px;
-            }
-
-            .sidebar {
-                width: 100%;
-                max-width: 400px;
-                flex-direction: row;
-                justify-content: space-around;
-            }
-
-            .stats, .controls {
-                flex: 1;
-            }
-
-            #nextPiece {
-                width: 120px;
-            }
-
-            .mobile-controls {
-                display: grid;
-            }
-
-            .controls {
-                display: none;
-            }
+        @media (max-width: 390px) {
+            .topbar { gap: 8px; }
+            #backBtn, #themeToggle { min-width: 0; }
+            .game-layout { grid-template-columns: minmax(0, 1fr) 105px; }
+            .panel-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
+            .controls p { display: block; line-height: 1.35; }
+            .controls kbd { display: inline-block; margin-top: 3px; }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Tetris</h1>
-        <div class="header-buttons">
-            <button id="themeToggle">🌙 Dark</button>
-            <button id="testBtn">Test</button>
-            <button id="resetBtn">Reset</button>
-            <button id="pauseBtn">Pause</button>
-            <button id="autoPlayBtn">Auto Play</button>
-            <button id="backBtn">Back</button>
-        </div>
-    </div>
+    <div class="page-shell">
+        <header class="topbar">
+            <button id="backBtn" type="button">&larr; Home</button>
+            <button id="themeToggle" type="button">&#9728; Light</button>
+        </header>
 
-    <div class="game-wrapper">
-        <div id="gameContainer">
-            <canvas id="gameCanvas" width="200" height="400"></canvas>
-        </div>
+        <main class="game-card">
+            <section class="game-meta" aria-label="Tetris game information">
+                <div>
+                    <span class="eyebrow">Arcade classic</span>
+                    <h1>Tetris</h1>
+                </div>
+                <div class="stats" aria-label="Game statistics">
+                    <div class="stat"><span class="stat-label">Score</span><strong id="score">0</strong></div>
+                    <div class="stat"><span class="stat-label">Best</span><strong id="highScore">0</strong></div>
+                    <div class="stat"><span class="stat-label">Lines</span><strong id="lines">0</strong></div>
+                    <div class="stat"><span class="stat-label">Level</span><strong id="level">1</strong></div>
+                </div>
+            </section>
 
-        <div class="sidebar">
-            <div class="stats">
-                <h3>Stats</h3>
-                <p>Score: <span id="score">0</span></p>
-                <p>High Score: <span id="highScore">0</span></p>
-                <p>Lines: <span id="lines">0</span></p>
-                <p>Level: <span id="level">1</span></p>
+            <section class="game-layout" aria-label="Tetris play area">
+                <div id="gameContainer">
+                    <canvas id="gameCanvas" width="200" height="400" aria-label="Tetris board"></canvas>
+                    <div id="pauseOverlay" class="pause-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pauseTitle" aria-hidden="true">
+                        <div class="pause-card">
+                            <p>Game status</p>
+                            <h2 id="pauseTitle">Paused</h2>
+                            <button id="resumeBtn" type="button">Resume game</button>
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="sidebar">
+                    <section id="nextPiece" class="side-panel">
+                        <div class="panel-heading">
+                            <h2>Next piece</h2>
+                            <span class="panel-label">Queue</span>
+                        </div>
+                        <canvas id="nextCanvas" width="100" height="100" aria-label="Next Tetris piece"></canvas>
+                    </section>
+
+                    <section class="controls side-panel">
+                        <div class="panel-heading">
+                            <h2>Controls</h2>
+                            <span class="panel-label">Keyboard</span>
+                        </div>
+                        <p><span>Move</span><kbd>&larr; &rarr;</kbd></p>
+                        <p><span>Soft drop</span><kbd>&darr;</kbd></p>
+                        <p><span>Rotate</span><kbd>&uarr; / R</kbd></p>
+                        <p><span>Hard drop</span><kbd>Space</kbd></p>
+                        <p><span>Pause</span><kbd>P</kbd></p>
+                    </section>
+                </aside>
+            </section>
+
+            <div class="action-bar" aria-label="Game actions">
+                <button id="resetBtn" type="button">Restart</button>
+                <button id="pauseBtn" type="button">Pause</button>
+                <button id="autoPlayBtn" type="button">Auto play</button>
+                <button id="testBtn" type="button">Core tests</button>
             </div>
 
-            <div id="nextPiece">
-                <h3>Next</h3>
-                <canvas id="nextCanvas" width="100" height="100"></canvas>
+            <div class="mobile-controls" aria-label="Touch controls">
+                <button id="qBtn" type="button"><span>Q</span><small>Reset</small></button>
+                <button id="wBtn" type="button"><span>W</span><small>Drop</small></button>
+                <button id="eBtn" type="button"><span>E</span><small>Rotate</small></button>
+                <button id="rBtn" type="button"><span>R</span><small>Pause</small></button>
+                <button id="aBtn" type="button"><span>A</span><small>Left</small></button>
+                <button id="sBtn" type="button"><span>S</span><small>Down</small></button>
+                <button id="dBtn" type="button"><span>D</span><small>Right</small></button>
             </div>
-
-            <div class="controls">
-                <h3>Controls</h3>
-                <p>← → : Move</p>
-                <p>↓ : Soft drop</p>
-                <p>↑ / R : Rotate</p>
-                <p>Space : Hard drop</p>
-                <p>P : Pause</p>
-                <p>Q/W/E/A/S/D on mobile match the button grid</p>
-                <p>R (game over) : Restart</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="mobile-controls">
-        <button id="qBtn"><span>Q</span><small>Reset</small></button>
-        <button id="wBtn"><span>W</span><small>Drop</small></button>
-        <button id="eBtn"><span>E</span><small>Rotate</small></button>
-        <button id="rBtn"><span>R</span><small>Pause</small></button>
-        <button id="aBtn"><span>A</span><small>Left</small></button>
-        <button id="sBtn"><span>S</span><small>Down</small></button>
-        <button id="dBtn"><span>D</span><small>Right</small></button>
+        </main>
     </div>
 
     <div id="testResults">
