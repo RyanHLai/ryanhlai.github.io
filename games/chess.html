@@ -3,18 +3,21 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Canvas Chess</title>
+<title>Chess</title>
 <style>
   :root {
-    --bg-color: #000;
-    --panel-bg: #001115;
-    --panel-alt: #021b20;
-    --border-color: #00f0ff;
-    --border-soft: rgba(0, 240, 255, 0.4);
-    --text-color: #eafcff;
-    --muted-color: #9edfe7;
-    --accent-color: #00f0ff;
-    --shadow-color: rgba(0, 240, 255, 0.38);
+    color-scheme: dark;
+    --page-top: #172326;
+    --page-bottom: #10191d;
+    --panel: rgba(20, 30, 34, 0.94);
+    --panel-raised: #202d31;
+    --panel-border: rgba(166, 228, 196, 0.2);
+    --text: #f2f5ef;
+    --muted: #aebbb4;
+    --accent: #a6e4c4;
+    --accent-strong: #62c89a;
+    --gold: #f4cb70;
+    --shadow: rgba(2, 9, 11, 0.42);
     --light-square: #f0d9b5;
     --dark-square: #b58863;
   }
@@ -22,193 +25,246 @@
   * { box-sizing: border-box; }
 
   body {
-    margin: 0;
     min-height: 100vh;
-    background: var(--bg-color);
-    color: var(--text-color);
-    font-family: Arial, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 20px;
+    margin: 0;
+    padding: 28px 18px;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(125, 190, 155, 0.16), transparent 42%),
+      linear-gradient(145deg, var(--page-top), var(--page-bottom) 72%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    transition: background 0.25s ease, color 0.25s ease;
   }
 
-  .game-shell {
-    width: min(100%, 980px);
+  body.light-mode {
+    color-scheme: light;
+    --page-top: #e7eee7;
+    --page-bottom: #d5e1d9;
+    --panel: rgba(250, 252, 247, 0.96);
+    --panel-raised: #e8efe8;
+    --panel-border: rgba(53, 124, 96, 0.24);
+    --text: #1e2a24;
+    --muted: #5d6d62;
+    --accent: #357c60;
+    --accent-strong: #2c986c;
+    --gold: #a76d16;
+    --shadow: rgba(33, 57, 41, 0.14);
   }
+
+  .game-shell { width: min(100%, 1020px); }
 
   .top-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  button, .top-bar a {
+    min-height: 42px;
+    padding: 9px 14px;
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.045);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 650;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  }
+
+  button:hover, .top-bar a:hover {
+    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  button:focus-visible, .top-bar a:focus-visible {
+    outline: 3px solid var(--gold);
+    outline-offset: 2px;
   }
 
   .top-bar a {
-    color: var(--text-color);
-    text-decoration: none;
-    font-size: 14px;
-    opacity: 0.9;
+    display: inline-flex;
+    align-items: center;
+    min-width: 112px;
   }
+
+  #themeToggle { min-width: 112px; }
+
+  .game-card {
+    padding: 22px;
+    border: 1px solid var(--panel-border);
+    border-radius: 18px;
+    background: var(--panel);
+    box-shadow: 0 28px 60px var(--shadow);
+    backdrop-filter: blur(10px);
+  }
+
+  .game-meta {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 20px;
+  }
+
+  .eyebrow, .panel-label {
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 750;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .eyebrow { display: block; margin-bottom: 6px; }
 
   h1 {
     margin: 0;
-    color: var(--accent-color);
-    font-size: clamp(1.6rem, 2vw, 2.2rem);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    text-shadow: 0 0 12px var(--shadow-color);
+    color: var(--text);
+    font-size: 2.35rem;
+    line-height: 1;
+    letter-spacing: 0;
+  }
+
+  .turn {
+    max-width: 48%;
+    padding: 10px 13px;
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--accent);
+    font-weight: 700;
+    text-align: right;
   }
 
   .game-layout {
-    display: flex;
-    gap: 22px;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 260px;
+    align-items: start;
+    gap: 18px;
   }
 
   #boardWrap {
-    position: relative;
-    background: var(--panel-bg);
-    border: 3px solid var(--border-color);
-    border-radius: 10px;
-    box-shadow: 0 0 18px var(--shadow-color);
+    width: min(100%, 640px);
+    justify-self: center;
     padding: 8px;
+    border: 2px solid color-mix(in srgb, var(--accent) 72%, transparent);
+    border-radius: 15px;
+    background: var(--panel-raised);
+    box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.14), 0 16px 30px var(--shadow);
   }
 
   canvas {
     display: block;
-    background: var(--panel-alt);
-    border-radius: 6px;
+    width: 100%;
+    height: auto;
+    border-radius: 7px;
     touch-action: none;
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.25);
   }
 
-  #controls {
-    flex: 1;
-    min-width: 280px;
-    max-width: 360px;
-    background: var(--panel-bg);
-    border: 2px solid var(--border-color);
-    border-radius: 10px;
-    box-shadow: 0 0 16px var(--shadow-color);
-    padding: 18px 16px 14px;
+  #controls { display: grid; gap: 12px; }
+
+  .side-panel {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    background: var(--panel-raised);
   }
 
-  .turn {
-    margin-bottom: 12px;
-    color: var(--accent-color);
-    font-weight: 700;
-    font-size: 1.1rem;
-    letter-spacing: 0.04em;
-    text-shadow: 0 0 10px var(--shadow-color);
+  .panel-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
   }
 
-  button {
-    margin: 6px 6px 6px 0;
-    padding: 9px 14px;
-    font-size: 14px;
-    font-weight: 700;
-    background: var(--panel-alt);
-    color: var(--text-color);
-    border: 2px solid var(--border-color);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 0 8px rgba(0, 240, 255, 0.16);
-  }
-
-  button:hover {
-    background: var(--accent-color);
-    color: #000;
-    transform: translateY(-1px);
-    box-shadow: 0 0 12px var(--shadow-color);
-  }
-
-  .info {
-    margin-top: 12px;
-    line-height: 1.5;
-    color: var(--muted-color);
+  .panel-heading h2 {
+    margin: 0;
+    color: var(--text);
     font-size: 0.95rem;
   }
 
-  .info strong {
-    color: var(--text-color);
+  .panel-label { color: var(--accent); font-size: 0.58rem; }
+
+  .action-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+  button {
+    margin: 0;
+    box-shadow: none;
   }
+
+  .action-bar button { min-width: 0; }
+
+  .info {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.83rem;
+    line-height: 1.5;
+  }
+
+  .info strong { color: var(--text); }
 
   .promotion-panel {
     display: none;
-    margin-top: 14px;
-    background: var(--panel-alt);
-    border: 2px solid var(--border-color);
-    border-radius: 10px;
     padding: 12px;
-    box-shadow: 0 0 12px var(--shadow-color);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 6%, var(--panel));
   }
 
-  .promotion-panel.visible {
-    display: block;
-  }
-
-  .promotion-panel h3 {
-    margin-top: 0;
-  }
-
-  .promotion-buttons {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .promotion-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 42px;
-    font-size: 1rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-  }
+  .promotion-panel.visible { display: block; }
 
   h3 {
-    margin: 14px 0 8px;
-    color: var(--accent-color);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    margin: 0 0 9px;
+    color: var(--text);
     font-size: 0.9rem;
   }
 
+  .promotion-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+  .promotion-btn {
+    min-height: 40px;
+    padding: 7px 10px;
+    font-size: 0.85rem;
+  }
+
   #moves {
-    white-space: pre-wrap;
-    background: #021113;
-    padding: 10px 12px;
-    border: 1px solid var(--border-soft);
-    border-radius: 6px;
-    max-height: 400px;
+    min-height: 84px;
+    max-height: 240px;
     overflow: auto;
-    color: var(--text-color);
+    padding: 10px 12px;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--panel) 78%, transparent);
+    color: var(--muted);
+    font-size: 0.85rem;
     line-height: 1.6;
-    font-size: 0.92rem;
+    white-space: pre-wrap;
   }
 
   @media (max-width: 760px) {
-    body {
-      padding: 12px;
-    }
+    body { padding: 16px 12px; place-items: start center; }
+    .game-card { padding: 17px 12px; }
+    .game-meta { align-items: flex-start; flex-direction: column; }
+    .turn { max-width: none; text-align: left; }
+    .game-layout { grid-template-columns: minmax(0, 1fr); }
+    #boardWrap { width: min(100%, 520px); }
+    #controls { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    .history-panel { grid-column: 1 / -1; }
+  }
 
-    .game-layout {
-      flex-direction: column;
-      align-items: center;
-    }
-
-    #controls {
-      width: 100%;
-      max-width: 100%;
-    }
-
-    .top-bar {
-      flex-wrap: wrap;
-    }
+  @media (max-width: 420px) {
+    .top-bar { gap: 8px; }
+    .top-bar a, #themeToggle { min-width: 0; }
+    #controls { grid-template-columns: minmax(0, 1fr); }
+    .history-panel { grid-column: auto; }
   }
 </style>
 </head>
@@ -216,33 +272,57 @@
   <div class="game-shell">
     <div class="top-bar">
       <a href="/" aria-label="Back to home">&larr; Home</a>
-      <h1>Chess</h1>
+      <button id="themeToggle" type="button" aria-pressed="false">&#9728; Light</button>
     </div>
 
-    <div class="game-layout">
-      <div id="boardWrap">
-        <canvas id="board" width="640" height="640"></canvas>
-      </div>
+    <main class="game-card">
+      <section class="game-meta" aria-label="Chess game information">
+        <div>
+          <span class="eyebrow">Classic strategy</span>
+          <h1>Chess</h1>
+        </div>
+        <div class="turn" id="turnIndicator" aria-live="polite">White to move</div>
+      </section>
 
-      <div id="controls">
-        <div class="turn" id="turnIndicator">White to move</div>
-        <button id="undoBtn">Undo</button>
-        <button id="restartBtn">Restart</button>
-        <button id="flipBtn">Flip Board</button>
-        <div class="info"><strong>How to play</strong>: click a piece then a destination.</div>
-        <div id="promotionPanel" class="promotion-panel" aria-live="polite">
+      <section class="game-layout" aria-label="Chess play area">
+        <div id="boardWrap">
+          <canvas id="board" width="640" height="640" aria-label="Chess board"></canvas>
+        </div>
+
+        <aside id="controls">
+          <section class="side-panel">
+            <div class="panel-heading">
+              <h2>Game controls</h2>
+              <span class="panel-label">Match</span>
+            </div>
+            <div class="action-bar">
+              <button id="undoBtn" type="button">Undo</button>
+              <button id="restartBtn" type="button">Restart</button>
+              <button id="flipBtn" type="button">Flip board</button>
+            </div>
+            <p class="info"><strong>Move:</strong> select a piece, then its destination.</p>
+          </section>
+
+          <section id="promotionPanel" class="promotion-panel" aria-live="polite">
           <h3>Choose promotion</h3>
           <div class="promotion-buttons">
-            <button class="promotion-btn" data-piece="q">Queen</button>
-            <button class="promotion-btn" data-piece="r">Rook</button>
-            <button class="promotion-btn" data-piece="b">Bishop</button>
-            <button class="promotion-btn" data-piece="n">Knight</button>
+              <button class="promotion-btn" type="button" data-piece="q">Queen</button>
+              <button class="promotion-btn" type="button" data-piece="r">Rook</button>
+              <button class="promotion-btn" type="button" data-piece="b">Bishop</button>
+              <button class="promotion-btn" type="button" data-piece="n">Knight</button>
           </div>
-        </div>
-        <h3>Move history</h3>
-        <div id="moves"></div>
-      </div>
-    </div>
+          </section>
+
+          <section class="side-panel history-panel">
+            <div class="panel-heading">
+              <h2>Move history</h2>
+              <span class="panel-label">Notation</span>
+            </div>
+            <div id="moves" aria-live="polite"></div>
+          </section>
+        </aside>
+      </section>
+    </main>
   </div>
 
 <script>
@@ -311,17 +391,17 @@ const promotionPanel = document.getElementById('promotionPanel');
 // --- Canvas drawing
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
+const boardWrap = document.getElementById('boardWrap');
 let size = canvas.width;
 let squareSize = size / 8;
 
 const pieceSymbols = {
-  wp: 'P', wr: 'R', wn: 'N', wb: 'B', wq: 'Q', wk: 'K',
-  bp: 'p', br: 'r', bn: 'n', bb: 'b', bq: 'q', bk: 'k'
+  wp: '\u265F', wr: '\u265C', wn: '\u265E', wb: '\u265D', wq: '\u265B', wk: '\u265A',
+  bp: '\u265F', br: '\u265C', bn: '\u265E', bb: '\u265D', bq: '\u265B', bk: '\u265A'
 };
 
 function resizeCanvas(){
-  const min = Math.min(window.innerWidth - 420, window.innerHeight - 60);
-  const px = Math.max(320, Math.min(700, min));
+  const px = Math.max(1, Math.floor(boardWrap.clientWidth - 20));
   canvas.width = px;
   canvas.height = px;
   size = canvas.width;
@@ -329,7 +409,15 @@ function resizeCanvas(){
   draw();
 }
 window.addEventListener('resize', resizeCanvas);
+new ResizeObserver(resizeCanvas).observe(boardWrap);
 resizeCanvas();
+
+const themeToggle = document.getElementById('themeToggle');
+themeToggle.addEventListener('click', () => {
+  const lightMode = document.body.classList.toggle('light-mode');
+  themeToggle.innerHTML = lightMode ? '&#9790; Dark' : '&#9728; Light';
+  themeToggle.setAttribute('aria-pressed', String(lightMode));
+});
 
 function draw(){
   ctx.clearRect(0,0,size,size);
@@ -362,8 +450,8 @@ function draw(){
   // pieces
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const fontSize = Math.floor(squareSize * 0.68);
-  ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+  const fontSize = Math.floor(squareSize * 0.88);
+  ctx.font = `${fontSize}px "Segoe UI Symbol", "Noto Sans Symbols 2", "DejaVu Sans", serif`;
   for(let y=0;y<8;y++){
     for(let x=0;x<8;x++){
       const piece = G.board[y][x];
@@ -371,10 +459,9 @@ function draw(){
       const rx = flipped ? 7-x : x;
       const ry = flipped ? 7-y : y;
       const key = piece.color + piece.type;
-      ctx.fillStyle = piece.color === 'w' ? '#fff' : '#000';
-      // draw piece as unicode symbol with subtle stroke
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillStyle = piece.color === 'w' ? '#fffdf4' : '#172326';
+      ctx.lineWidth = Math.max(1, squareSize * 0.012);
+      ctx.strokeStyle = piece.color === 'w' ? 'rgba(23,35,38,0.48)' : 'rgba(255,253,244,0.58)';
       ctx.strokeText(pieceSymbols[key], rx*squareSize + squareSize/2, ry*squareSize + squareSize/2 + 2);
       ctx.fillText(pieceSymbols[key], rx*squareSize + squareSize/2, ry*squareSize + squareSize/2 + 2);
     }
@@ -402,8 +489,8 @@ canvas.addEventListener('click', ev => {
   const rect = canvas.getBoundingClientRect();
   const cx = ev.clientX - rect.left;
   const cy = ev.clientY - rect.top;
-  const x = Math.floor(cx / squareSize);
-  const y = Math.floor(cy / squareSize);
+  const x = Math.floor(cx / rect.width * 8);
+  const y = Math.floor(cy / rect.height * 8);
   const boardX = flipped ? 7-x : x;
   const boardY = flipped ? 7-y : y;
   handleSquareClick(boardX, boardY);
@@ -415,8 +502,8 @@ canvas.addEventListener('touchstart', ev => {
   const rect = canvas.getBoundingClientRect();
   const cx = t.clientX - rect.left;
   const cy = t.clientY - rect.top;
-  const x = Math.floor(cx / squareSize);
-  const y = Math.floor(cy / squareSize);
+  const x = Math.floor(cx / rect.width * 8);
+  const y = Math.floor(cy / rect.height * 8);
   const boardX = flipped ? 7-x : x;
   const boardY = flipped ? 7-y : y;
   handleSquareClick(boardX, boardY);
