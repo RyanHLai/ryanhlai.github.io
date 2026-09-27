@@ -395,11 +395,6 @@ const boardWrap = document.getElementById('boardWrap');
 let size = canvas.width;
 let squareSize = size / 8;
 
-const pieceSymbols = {
-  wp: '\u265F', wr: '\u265C', wn: '\u265E', wb: '\u265D', wq: '\u265B', wk: '\u265A',
-  bp: '\u265F', br: '\u265C', bn: '\u265E', bb: '\u265D', bq: '\u265B', bk: '\u265A'
-};
-
 function resizeCanvas(){
   const px = Math.max(1, Math.floor(boardWrap.clientWidth - 20));
   canvas.width = px;
@@ -448,24 +443,139 @@ function draw(){
     }
   }
   // pieces
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  const fontSize = Math.floor(squareSize * 0.88);
-  ctx.font = `${fontSize}px "Segoe UI Symbol", "Noto Sans Symbols 2", "DejaVu Sans", serif`;
   for(let y=0;y<8;y++){
     for(let x=0;x<8;x++){
       const piece = G.board[y][x];
       if(!piece) continue;
       const rx = flipped ? 7-x : x;
       const ry = flipped ? 7-y : y;
-      const key = piece.color + piece.type;
-      ctx.fillStyle = piece.color === 'w' ? '#fffdf4' : '#172326';
-      ctx.lineWidth = Math.max(1, squareSize * 0.012);
-      ctx.strokeStyle = piece.color === 'w' ? 'rgba(23,35,38,0.48)' : 'rgba(255,253,244,0.58)';
-      ctx.strokeText(pieceSymbols[key], rx*squareSize + squareSize/2, ry*squareSize + squareSize/2 + 2);
-      ctx.fillText(pieceSymbols[key], rx*squareSize + squareSize/2, ry*squareSize + squareSize/2 + 2);
+      drawPiece(piece, rx*squareSize + squareSize/2, ry*squareSize + squareSize/2);
     }
   }
+}
+
+function drawPiece(piece, centerX, centerY){
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.scale(squareSize, squareSize);
+  ctx.lineWidth = 0.035;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.fillStyle = piece.color === 'w' ? '#fff9e9' : '#172326';
+  ctx.strokeStyle = piece.color === 'w' ? '#27352f' : '#fff9e9';
+  ctx.beginPath();
+
+  if(piece.type === 'p'){
+    ctx.arc(0, -0.25, 0.14, 0, Math.PI*2);
+    ctx.moveTo(-0.08, -0.1);
+    ctx.lineTo(0.08, -0.1);
+    ctx.lineTo(0.22, 0.25);
+    ctx.lineTo(-0.22, 0.25);
+    ctx.closePath();
+    ctx.moveTo(-0.3, 0.31);
+    ctx.lineTo(0.3, 0.31);
+    ctx.lineTo(0.34, 0.4);
+    ctx.lineTo(-0.34, 0.4);
+    ctx.closePath();
+  } else if(piece.type === 'r'){
+    ctx.moveTo(-0.34, -0.4);
+    ctx.lineTo(-0.34, -0.24);
+    ctx.lineTo(-0.25, -0.24);
+    ctx.lineTo(-0.25, -0.12);
+    ctx.lineTo(0.25, -0.12);
+    ctx.lineTo(0.25, -0.24);
+    ctx.lineTo(0.34, -0.24);
+    ctx.lineTo(0.34, -0.4);
+    ctx.lineTo(0.17, -0.4);
+    ctx.lineTo(0.17, -0.3);
+    ctx.lineTo(0.06, -0.3);
+    ctx.lineTo(0.06, -0.4);
+    ctx.lineTo(-0.06, -0.4);
+    ctx.lineTo(-0.06, -0.3);
+    ctx.lineTo(-0.17, -0.3);
+    ctx.lineTo(-0.17, -0.4);
+    ctx.closePath();
+    ctx.moveTo(-0.25, -0.12);
+    ctx.lineTo(0.25, -0.12);
+    ctx.lineTo(0.3, 0.29);
+    ctx.lineTo(0.36, 0.34);
+    ctx.lineTo(0.36, 0.41);
+    ctx.lineTo(-0.36, 0.41);
+    ctx.lineTo(-0.36, 0.34);
+    ctx.lineTo(-0.3, 0.29);
+    ctx.closePath();
+  } else if(piece.type === 'n'){
+    ctx.moveTo(-0.34, 0.31);
+    ctx.lineTo(-0.22, 0.2);
+    ctx.lineTo(-0.18, -0.03);
+    ctx.lineTo(-0.31, -0.19);
+    ctx.lineTo(-0.09, -0.17);
+    ctx.lineTo(0.02, -0.4);
+    ctx.lineTo(0.28, -0.28);
+    ctx.lineTo(0.35, -0.06);
+    ctx.lineTo(0.22, 0.03);
+    ctx.lineTo(0.18, 0.28);
+    ctx.lineTo(0.34, 0.34);
+    ctx.lineTo(0.34, 0.41);
+    ctx.lineTo(-0.36, 0.41);
+    ctx.closePath();
+    ctx.moveTo(0.1, -0.24);
+    ctx.arc(0.1, -0.24, 0.018, 0, Math.PI*2);
+  } else if(piece.type === 'b'){
+    ctx.moveTo(0, -0.42);
+    ctx.bezierCurveTo(0.25, -0.26, 0.22, -0.08, 0.1, 0.02);
+    ctx.lineTo(0.24, 0.28);
+    ctx.lineTo(0.32, 0.34);
+    ctx.lineTo(0.32, 0.41);
+    ctx.lineTo(-0.32, 0.41);
+    ctx.lineTo(-0.32, 0.34);
+    ctx.lineTo(-0.24, 0.28);
+    ctx.lineTo(-0.1, 0.02);
+    ctx.bezierCurveTo(-0.22, -0.08, -0.25, -0.26, 0, -0.42);
+    ctx.closePath();
+    ctx.moveTo(-0.08, -0.19);
+    ctx.lineTo(0.08, -0.3);
+  } else if(piece.type === 'q'){
+    ctx.moveTo(-0.3, -0.2);
+    ctx.lineTo(-0.22, 0.25);
+    ctx.lineTo(-0.32, 0.32);
+    ctx.lineTo(-0.34, 0.41);
+    ctx.lineTo(0.34, 0.41);
+    ctx.lineTo(0.32, 0.32);
+    ctx.lineTo(0.22, 0.25);
+    ctx.lineTo(0.3, -0.2);
+    ctx.lineTo(0.12, -0.04);
+    ctx.lineTo(0, -0.28);
+    ctx.lineTo(-0.12, -0.04);
+    ctx.closePath();
+    for(const x of [-0.3, 0, 0.3]){
+      ctx.moveTo(x + 0.055, -0.32);
+      ctx.arc(x, -0.32, 0.055, 0, Math.PI*2);
+    }
+  } else {
+    ctx.moveTo(-0.27, -0.12);
+    ctx.lineTo(0.27, -0.12);
+    ctx.lineTo(0.22, 0.27);
+    ctx.lineTo(0.32, 0.34);
+    ctx.lineTo(0.32, 0.41);
+    ctx.lineTo(-0.32, 0.41);
+    ctx.lineTo(-0.32, 0.34);
+    ctx.lineTo(-0.22, 0.27);
+    ctx.closePath();
+    ctx.moveTo(-0.08, -0.4);
+    ctx.lineTo(0.08, -0.4);
+    ctx.lineTo(0.08, -0.31);
+    ctx.lineTo(0.18, -0.31);
+    ctx.lineTo(0.18, -0.18);
+    ctx.lineTo(-0.18, -0.18);
+    ctx.lineTo(-0.18, -0.31);
+    ctx.lineTo(-0.08, -0.31);
+    ctx.closePath();
+  }
+
+  ctx.fill('nonzero');
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawHighlight(x,y,style){
