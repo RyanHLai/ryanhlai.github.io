@@ -21,7 +21,7 @@
       --ghost-pink: #f9a8d4;
       --ghost-cyan: #67e8f9;
       --ghost-orange: #fdba74;
-      --wall: #3b82f6;
+      --wall: #b88912;
       --shadow: rgba(15, 23, 42, 0.8);
     }
 
@@ -41,7 +41,7 @@
       --ghost-pink: #e879f9;
       --ghost-cyan: #2dd4bf;
       --ghost-orange: #f97316;
-      --wall: #4f7cff;
+      --wall: #f2d34e;
       --shadow: rgba(31, 40, 35, 0.12);
     }
 
@@ -265,8 +265,8 @@
     }
 
     body.light-mode .mini-button {
-      background: linear-gradient(135deg, #f59e0b, #2f7c6d);
-      color: #f6f1ea;
+      background: linear-gradient(135deg, #f4cf45, #fffbea);
+      color: #5a4611;
     }
 
     .control-bar {
@@ -349,6 +349,10 @@
             <span>Best</span>
             <strong id="highScore">0</strong>
           </div>
+          <div class="score-pill">
+            <span>Lives</span>
+            <strong id="livesValue">3</strong>
+          </div>
         </div>
       </div>
 
@@ -387,6 +391,7 @@
     const overlayTitle = document.getElementById('overlayTitle');
     const scoreValue = document.getElementById('scoreValue');
     const highScoreEl = document.getElementById('highScore');
+    const livesValue = document.getElementById('livesValue');
     const themeToggle = document.getElementById('themeToggle');
     const startBtn = document.getElementById('startBtn');
     const pauseBtn = document.getElementById('pauseBtn');
@@ -419,6 +424,8 @@
     ];
 
     const levelLayout = rawLevelLayout;
+    const ghostGate = { x: 9, y: 12 };
+    const ghostBoxExteriorBlocks = new Set(['7,7']);
     const ghostBoxArea = new Set([
       '8,8', '9,8', '10,8',
       '8,9', '9,9', '10,9',
@@ -502,6 +509,7 @@
         dy: 0,
         home: { x, y },
         personality,
+        hasExitedPen: false,
         speedBoost: Math.random() * 0.8 + 0.6
       };
     }
@@ -512,7 +520,7 @@
       playerDirection = { x: 1, y: 0 };
       nextDirection = { x: 1, y: 0 };
       ghosts = ghostSpawnPositions.map((pos, index) => {
-        const personalities = ['chaser', 'ambusher', 'scatter', 'random'];
+        const personalities = ['blinky', 'pinky', 'inky', 'clyde'];
         return {
           ...createGhost(pos.x, pos.y, ghostColors[index], personalities[index]),
           releaseOrder: index
@@ -529,7 +537,7 @@
 
     function respawnGhosts() {
       ghosts = ghostSpawnPositions.map((pos, index) => {
-        const personalities = ['chaser', 'ambusher', 'scatter', 'random'];
+        const personalities = ['blinky', 'pinky', 'inky', 'clyde'];
         return {
           ...createGhost(pos.x, pos.y, ghostColors[index], personalities[index]),
           releaseOrder: index
@@ -542,6 +550,7 @@
     function updateScore() {
       scoreValue.textContent = score;
       highScoreEl.textContent = highScore;
+      livesValue.textContent = lives;
     }
 
     function isWall(x, y) {
@@ -549,15 +558,10 @@
         return true;
       }
       const cell = keyFromPos(x, y);
-      const insideGhostBox = x >= 8 && x <= 10 && y >= 8 && y <= 11;
-      const gateCell = x === 9 && y === 12;
-      if (insideGhostBox) {
-        return false;
+      if (ghostBoxExteriorBlocks.has(cell)) {
+        return true;
       }
-      if (gateCell) {
-        return false;
-      }
-      if (ghostBoxBoundary.has(cell)) {
+      if (ghostBoxArea.has(cell) || cell === keyFromPos(ghostGate.x, ghostGate.y) || ghostBoxBoundary.has(cell)) {
         return true;
       }
       const row = levelLayout[y];
@@ -565,6 +569,28 @@
         return true;
       }
       return row[x] === '#';
+    }
+
+    function isGhostWall(x, y, ghost) {
+      if (x < 0 || y < 0 || x >= tileCount || y >= tileCount) {
+        return true;
+      }
+      const cell = keyFromPos(x, y);
+      if (ghostBoxExteriorBlocks.has(cell) || ghostBoxBoundary.has(cell)) {
+        return true;
+      }
+      if (x === ghostGate.x && y === ghostGate.y) {
+        return ghost.hasExitedPen || ghost.releaseOrder >= ghostReleaseIndex;
+      }
+      if (ghostBoxArea.has(cell)) {
+        return ghost.hasExitedPen;
+      }
+      const row = levelLayout[y];
+      return !row || row[x] === '#';
+    }
+
+    function isGhostGateOpen() {
+      return ghosts.some(ghost => ghost.releaseOrder < ghostReleaseIndex && !ghost.hasExitedPen);
     }
 
     function isValidMove(x, y) {
@@ -709,25 +735,92 @@
       return occupied;
     }
 
+    function getGhostTarget(ghost) {
+      const ahead = (tiles) => ({
+        x: player.x + playerDirection.x * tiles,
+        y: player.y + playerDirection.y * tiles
+      });
+
+      if (ghost.personality === 'pinky') {
+        return ahead(4);
+      }
+
+      if (ghost.personality === 'inky') {
+        const blinky = ghosts.find(candidate => candidate.personality === 'blinky');
+        const pivot = ahead(2);
+        return blinky
+          ? { x: pivot.x * 2 - blinky.x, y: pivot.y * 2 - blinky.y }
+          : pivot;
+      }
+
+      if (ghost.personality === 'clyde' && ghostDistance(ghost, player) <= 6) {
+        return { x: 1, y: 18 };
+      }
+
+      return { x: player.x, y: player.y };
+    }
+
+    function getGhostFleeTarget(ghost) {
+      const playerDistances = getGhostDistancesFrom(player);
+      let fleeTarget = ghost;
+      let greatestDistance = -1;
+      let closestToGhost = Infinity;
+
+      playerDistances.forEach((distance, key) => {
+        if (ghostBoxArea.has(key)) return;
+        const [x, y] = key.split(',').map(Number);
+        const distanceFromGhost = ghostDistance(ghost, { x, y });
+        if (distance > greatestDistance || (distance === greatestDistance && distanceFromGhost < closestToGhost)) {
+          fleeTarget = { x, y };
+          greatestDistance = distance;
+          closestToGhost = distanceFromGhost;
+        }
+      });
+
+      return fleeTarget;
+    }
+
+    function getGhostDistancesFrom(target, ghost = null) {
+      const wallAt = (x, y) => ghost ? isGhostWall(x, y, ghost) : isWall(x, y);
+      const walkableTiles = [];
+      for (let y = 0; y < tileCount; y++) {
+        for (let x = 0; x < tileCount; x++) {
+          if (!wallAt(x, y)) {
+            walkableTiles.push({ x, y });
+          }
+        }
+      }
+
+      const destination = walkableTiles.reduce((closest, tile) => {
+        const distance = ghostDistance(tile, target);
+        return distance < closest.distance ? { tile, distance } : closest;
+      }, { tile: walkableTiles[0], distance: Infinity }).tile;
+      const distances = new Map([[keyFromPos(destination.x, destination.y), 0]]);
+      const queue = [destination];
+
+      for (let index = 0; index < queue.length; index++) {
+        const tile = queue[index];
+        const nextDistance = distances.get(keyFromPos(tile.x, tile.y)) + 1;
+        for (const dir of [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }]) {
+          const x = tile.x + dir.x;
+          const y = tile.y + dir.y;
+          const key = keyFromPos(x, y);
+          if (wallAt(x, y) || distances.has(key)) continue;
+          distances.set(key, nextDistance);
+          queue.push({ x, y });
+        }
+      }
+
+      return distances;
+    }
+
     function pickGhostDirection(ghost) {
       const dirs = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
-      const isReleased = ghost.releaseOrder < ghostReleaseIndex;
-      const inGhostBox = ghost.x >= 8 && ghost.x <= 10 && ghost.y >= 8 && ghost.y <= 11;
       const occupiedTiles = getOccupiedGhostTiles(ghost);
       const frightened = powerModeUntil > performance.now();
       const reverseDir = { x: -ghost.dx, y: -ghost.dy };
-
-      const personalityTargets = {
-        chaser: { x: player.x, y: player.y },
-        ambusher: {
-          x: player.x + playerDirection.x * 3,
-          y: player.y + playerDirection.y * 3
-        },
-        scatter: { x: 18, y: 1 },
-        random: { x: Math.floor(Math.random() * 18) + 1, y: Math.floor(Math.random() * 18) + 1 }
-      };
-
-      const target = personalityTargets[ghost.personality] || personalityTargets.chaser;
+      const target = frightened ? getGhostFleeTarget(ghost) : getGhostTarget(ghost);
+      const distances = getGhostDistancesFrom(target, ghost);
 
       const validMoves = [];
       dirs.forEach((dir) => {
@@ -735,31 +828,33 @@
         const ny = ghost.y + dir.y;
         const nextTile = keyFromPos(nx, ny);
 
-        if (isWall(nx, ny)) return;
+        if (isGhostWall(nx, ny, ghost)) return;
         if (occupiedTiles.has(nextTile)) return;
-        if (!isReleased && inGhostBox && (nx === 9 && ny === 12)) return;
-        if (ghost.x === 9 && ghost.y === 12 && dir.y === 1) return;
-        if (nx === player.x && ny === player.y) return;
 
-        if (dir.x === reverseDir.x && dir.y === reverseDir.y && (ghost.x !== 9 || ghost.y !== 9)) {
-          return;
-        }
-
-        const distance = ghostDistance({ x: nx, y: ny }, frightened ? { x: player.x, y: player.y } : target);
-        validMoves.push({ dir, distance });
+        const isReverse = dir.x === reverseDir.x && dir.y === reverseDir.y;
+        validMoves.push({
+          dir,
+          distance: distances.get(nextTile) ?? Infinity,
+          isReverse,
+          continues: dir.x === ghost.dx && dir.y === ghost.dy
+        });
       });
 
       if (!validMoves.length) {
         const fallback = dirs.find(dir => {
           const nx = ghost.x + dir.x;
           const ny = ghost.y + dir.y;
-          return !isWall(nx, ny) && !occupiedTiles.has(keyFromPos(nx, ny));
+          return !isGhostWall(nx, ny, ghost) && !occupiedTiles.has(keyFromPos(nx, ny));
         });
         return fallback || { x: 0, y: 0 };
       }
 
-      validMoves.sort((a, b) => frightened ? b.distance - a.distance : a.distance - b.distance);
-      return validMoves[0].dir;
+      const forwardMoves = validMoves.filter(move => !move.isReverse);
+      const candidates = forwardMoves.length ? forwardMoves : validMoves;
+      candidates.sort((a, b) => {
+        return a.distance - b.distance || Number(b.continues) - Number(a.continues);
+      });
+      return candidates[0].dir;
     }
 
     function updateGhosts() {
@@ -773,20 +868,18 @@
         const nx = ghost.x + next.x;
         const ny = ghost.y + next.y;
         const nextKey = keyFromPos(nx, ny);
+        const wasInPen = ghostBoxArea.has(keyFromPos(ghost.x, ghost.y)) || (ghost.x === ghostGate.x && ghost.y === ghostGate.y);
 
-        if (isWall(nx, ny)) return;
+        if (isGhostWall(nx, ny, ghost)) return;
         if (occupiedTiles.has(nextKey) && nextKey !== keyFromPos(ghost.x, ghost.y)) return;
 
         occupiedTiles.delete(keyFromPos(ghost.x, ghost.y));
         occupiedTiles.add(nextKey);
 
-        const stepStretch = 1 + (ghost.speedBoost || 1) * 0.08;
-        if (Math.random() < 0.18 * stepStretch) {
-          ghost.x = nx;
-          ghost.y = ny;
-        } else {
-          ghost.x = nx;
-          ghost.y = ny;
+        ghost.x = nx;
+        ghost.y = ny;
+        if (wasInPen && !ghostBoxArea.has(nextKey) && !(nx === ghostGate.x && ny === ghostGate.y)) {
+          ghost.hasExitedPen = true;
         }
 
         ghost.dx = next.x;
@@ -796,26 +889,31 @@
 
     function checkGhostCollisions() {
       const frightened = powerModeUntil > performance.now();
-      ghosts.forEach((ghost) => {
+      for (const ghost of ghosts) {
         if (ghost.x === player.x && ghost.y === player.y) {
           if (frightened) {
             ghost.x = ghost.home.x;
             ghost.y = ghost.home.y;
+            ghost.hasExitedPen = false;
             score += 50;
             maybeUpdateHighScore();
           } else {
             lives -= 1;
+            updateScore();
             if (lives <= 0) {
               endGame();
-              return;
+            } else {
+              player = { ...playerSpawn };
+              playerDirection = { x: 1, y: 0 };
+              nextDirection = { x: 1, y: 0 };
+              respawnGhosts();
             }
-            player = { ...playerSpawn };
-            playerDirection = { x: 1, y: 0 };
-            nextDirection = { x: 1, y: 0 };
-            respawnGhosts();
+            return true;
           }
+          return true;
         }
-      });
+      }
+      return false;
     }
 
     function updateGhostRelease() {
@@ -835,6 +933,10 @@
 
       updateGhostRelease();
       handlePlayerMovement();
+      if (!isRunning || checkGhostCollisions()) {
+        drawGame();
+        return;
+      }
       updateGhosts();
       checkGhostCollisions();
       drawGame();
@@ -847,34 +949,28 @@
     }
 
     function drawWall(x, y) {
-      const { dark, wall } = getBoardColors();
-      const left = x * gridSize;
-      const top = y * gridSize;
-      const right = left + gridSize;
-      const bottom = top + gridSize;
+      const { wall } = getBoardColors();
+      ctx.fillStyle = wall;
+      ctx.fillRect(x * gridSize + 1, y * gridSize + 1, gridSize - 2, gridSize - 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(x * gridSize + 2, y * gridSize + 2, gridSize - 6, 4);
+    }
 
+    function drawGhostGate() {
+      const { dark, wall } = getBoardColors();
+      const left = ghostGate.x * gridSize;
+      const top = ghostGate.y * gridSize;
       ctx.fillStyle = dark;
-      ctx.fillRect(left, top, gridSize, gridSize);
+      ctx.fillRect(left + 1, top + 1, gridSize - 2, gridSize - 2);
       ctx.strokeStyle = wall;
       ctx.lineWidth = 2.5;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      if (!isWall(x - 1, y)) {
-        ctx.moveTo(left, top);
-        ctx.lineTo(left, bottom);
-      }
-      if (!isWall(x + 1, y)) {
-        ctx.moveTo(right, top);
-        ctx.lineTo(right, bottom);
-      }
-      if (!isWall(x, y - 1)) {
-        ctx.moveTo(left, top);
-        ctx.lineTo(right, top);
-      }
-      if (!isWall(x, y + 1)) {
-        ctx.moveTo(left, bottom);
-        ctx.lineTo(right, bottom);
-      }
+      const barRows = isGhostGateOpen() ? [3, 7, 11] : [5, 10, 15];
+      barRows.forEach(offset => {
+        ctx.moveTo(left + 4, top + offset);
+        ctx.lineTo(left + gridSize - 4, top + offset);
+      });
       ctx.stroke();
     }
 
@@ -946,16 +1042,6 @@
       ctx.fill();
     }
 
-    function drawLives() {
-      for (let i = 0; i < lives; i++) {
-        ctx.beginPath();
-        ctx.fillStyle = '#facc15';
-        ctx.moveTo(18 + i * 20, 388);
-        ctx.arc(18 + i * 20, 388, 6, 0.2, 2 * Math.PI - 0.2, false);
-        ctx.fill();
-      }
-    }
-
     function drawGame() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawCheckerboard();
@@ -963,16 +1049,17 @@
       for (let y = 0; y < levelLayout.length; y++) {
         for (let x = 0; x < levelLayout[y].length; x++) {
           const cell = keyFromPos(x, y);
-          if (isWall(x, y) && !ghostBoxArea.has(cell)) {
+          if (x === ghostGate.x && y === ghostGate.y) continue;
+          if (isWall(x, y) && (!ghostBoxArea.has(cell) || ghostBoxExteriorBlocks.has(cell))) {
             drawWall(x, y);
           }
         }
       }
 
+      drawGhostGate();
       drawPellets();
       drawPlayer();
       ghosts.forEach(drawGhost);
-      drawLives();
     }
 
     function gameLoop(timestamp) {
